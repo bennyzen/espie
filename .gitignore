@@ -1,0 +1,26 @@
+# Upstream git repos (we include the code but not their git history)
+firmware/.git
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Build artifacts
+firmware/build/
+firmware/managed_components/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.git_upstream
+
+# Tool artifacts
+.superpowers/
+docs/superpowers/
+.planning/
+.playwright-mcp/
+
+# Cached models
+espie/local_cache/

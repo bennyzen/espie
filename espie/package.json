@@ -1,0 +1,52 @@
+{
+  "name": "espie",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "NODE_OPTIONS='--unhandled-rejections=warn' NUXT_PORT=8000 nuxt dev --host 0.0.0.0",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "test": "vitest run --reporter=verbose",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@discordjs/opus": "^0.10.0",
+    "@mariozechner/pi-agent-core": "^0.63.1",
+    "@mariozechner/pi-ai": "^0.63.1",
+    "@modelcontextprotocol/sdk": "^1.28.0",
+    "@nuxt/ui": "^4.6.0",
+    "@nuxtjs/mdc": "^0.21.0",
+    "@sinclair/typebox": "^0.34.48",
+    "ai": "^6.0.141",
+    "avr-vad": "^1.0.9",
+    "better-sqlite3": "^12.8.0",
+    "chokidar": "^5.0.0",
+    "edge-tts-universal": "^1.4.0",
+    "esptool-js": "^0.6.0",
+    "fastembed": "^2.1.0",
+    "groq-sdk": "^1.1.2",
+    "node-cron": "^4.2.1",
+    "nuxt": "^4.4.2",
+    "onnxruntime-node": "^1.24.3",
+    "openai": "^6.33.0",
+    "opusscript": "^0.1.1",
+    "sqlite-vec": "^0.1.7",
+    "vue": "^3.5.30",
+    "vue-router": "^5.0.4"
+  },
+  "overrides": {
+    "onnxruntime-node": "^1.24.3"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "^1.2.100",
+    "@nuxt/test-utils": "^4.0.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node-cron": "^3.0.11",
+    "vitest": "^4.1.2"
+  }
+}

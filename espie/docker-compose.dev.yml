@@ -1,0 +1,32 @@
+services:
+  espie:
+    container_name: espie-dev
+    image: node:22-bookworm
+    working_dir: /app
+    network_mode: host
+    command: >
+      sh -c "
+        apt-get update -qq && apt-get install -y -qq ffmpeg libopus-dev > /dev/null 2>&1;
+        npm install --prefer-offline 2>&1 | tail -5;
+        NUXT_PORT=8000 npx nuxt dev --host 0.0.0.0
+      "
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - node_modules:/app/node_modules
+    environment:
+      - TZ=UTC
+      - NODE_OPTIONS=--max-old-space-size=1024
+      - DATABASE_PATH=/app/data/db/espie.db
+      - BIN_DIR=/app/data/bin
+      - TZ_OFFSET_HOURS=0
+      - YTMUSIC_DIR=/app/data/ytmusic
+      - HA_BASE_URL=${HA_BASE_URL:-}
+      - HA_TOKEN=${HA_TOKEN:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - CFLAGS=-DOPUS_ARM_MAY_HAVE_NEON_INTR
+    restart: unless-stopped
+
+volumes:
+  node_modules:
