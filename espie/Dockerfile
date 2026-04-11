@@ -9,18 +9,19 @@ RUN apt-get update && apt-get install -y \
   libopus-dev \
   && rm -rf /var/lib/apt/lists/*
 
-# ARM64 workaround for @discordjs/opus NEON intrinsics
-ENV CFLAGS="-DOPUS_ARM_MAY_HAVE_NEON_INTR"
-
 WORKDIR /app
 
 # Install dependencies (layer cache: only rebuilds when package*.json changes)
 COPY package*.json ./
-RUN npm install --no-optional || npm install
+# ARM64 needs CFLAGS for @discordjs/opus NEON intrinsics; the flag breaks x86 builds
+RUN if [ "$(uname -m)" = "aarch64" ]; then \
+      export CFLAGS="-DOPUS_ARM_MAY_HAVE_NEON_INTR"; \
+    fi && \
+    npm install --no-optional || npm install
 
 # Copy source and build (Pi 4 needs more memory for Nuxt build)
 COPY . .
-RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
 # =============================================================================
 # Stage 2: Runtime

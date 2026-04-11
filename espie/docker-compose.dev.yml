@@ -7,6 +7,7 @@ services:
     command: >
       sh -c "
         apt-get update -qq && apt-get install -y -qq ffmpeg libopus-dev > /dev/null 2>&1;
+        if [ \"$$(uname -m)\" = 'aarch64' ]; then export CFLAGS='-DOPUS_ARM_MAY_HAVE_NEON_INTR'; fi;
         npm install --prefer-offline 2>&1 | tail -5;
         NUXT_PORT=8000 npx nuxt dev --host 0.0.0.0
       "
@@ -25,7 +26,7 @@ services:
       - HA_TOKEN=${HA_TOKEN:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - CFLAGS=-DOPUS_ARM_MAY_HAVE_NEON_INTR
+
     restart: unless-stopped
 
 volumes:

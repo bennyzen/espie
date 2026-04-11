@@ -90,7 +90,7 @@ private:
     Button boot_button_;
     Display* display_;
     esp_timer_handle_t touchpad_timer_;
-    Cst816d* cst816d_;
+    Cst816d* cst816d_ = nullptr;
     esp_io_expander_handle_t io_expander_ = NULL;
     esp_lcd_panel_handle_t panel_ = nullptr;
     ScreenManager* screen_manager_ = nullptr;
@@ -214,6 +214,17 @@ private:
 
     void InitializeCst816DTouchPad() {
         ESP_LOGI(TAG, "Init Cst816D");
+
+        // Probe I2C address before constructing the driver — if the touch
+        // controller isn't populated on this board revision, skip gracefully
+        // instead of aborting via ESP_ERROR_CHECK inside ReadReg().
+        esp_err_t ret = i2c_master_probe(i2c_bus_, 0x15, 100);
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "CST816D not found at 0x15 (0x%x), touch disabled", ret);
+            cst816d_ = nullptr;
+            return;
+        }
+
         cst816d_ = new Cst816d(i2c_bus_, 0x15);
 
         // 创建定时器，10ms 间隔
