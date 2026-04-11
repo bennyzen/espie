@@ -1,11 +1,11 @@
 {
-  "model": "sp-esp32-s3-1.54-muma",
+  "model": "espie-spotpear",
   "chipFamily": "ESP32-S3",
   "parts": [
     { "name": "bootloader", "path": "bootloader.bin", "offset": "0x0000" },
     { "name": "partition-table", "path": "partition-table.bin", "offset": "0x8000" },
     { "name": "ota-data", "path": "ota-data.bin", "offset": "0xD000" },
-    { "name": "application", "path": "sp-esp32-s3-1.54-muma/1.0.0.20260330230942.bin", "offset": "0x20000" }
+    { "name": "application", "path": "espie-spotpear/1.0.0.20260330230942.bin", "offset": "0x20000" }
   ],
   "nvsOffset": "0x9000",
   "version": "1.0.0.20260330230942"
