@@ -2,27 +2,35 @@ import fs from 'fs'
 import path from 'path'
 
 /**
- * Parse a version string into numeric tuple.
- * Extracts all digit groups: '1.2.3' -> [1,2,3], 'v2.0.1-beta' -> [2,0,1]
+ * Parse a version string into semver triple [major, minor, patch].
+ * Only the first three numeric groups matter for comparison.
+ * A trailing fourth segment (e.g. the timestamp in '1.0.0.20260330230942')
+ * is dev-build metadata — stored but not used for ordering.
  */
-export function parseVersion(ver: string): number[] {
+export function parseVersion(ver: string): { semver: number[], build: number | null } {
   const parts = ver.match(/\d+/g)
-  return parts ? parts.map(Number) : [0]
+  if (!parts) return { semver: [0, 0, 0], build: null }
+  const nums = parts.map(Number)
+  return {
+    semver: [nums[0] ?? 0, nums[1] ?? 0, nums[2] ?? 0],
+    build: nums.length > 3 ? nums[3]! : null,
+  }
 }
 
 /**
  * Return true if version string a is strictly higher than b.
- * Compares lexicographically by numeric tuple, padding shorter with zeros.
+ * Compares only the semver triple (major.minor.patch). Dev-build timestamps
+ * (4th segment) are ignored — '1.0.0.20260330' is NOT higher than '1.0.0'.
+ * This prevents OTA loops when the binary's embedded version differs from
+ * the filename version (e.g. dev-ota.sh adds a timestamp to the filename
+ * but the binary reports the base version from CMakeLists.txt).
  */
 export function isHigherVersion(a: string, b: string): boolean {
-  const ta = parseVersion(a)
-  const tb = parseVersion(b)
-  const maxLen = Math.max(ta.length, tb.length)
-  for (let i = 0; i < maxLen; i++) {
-    const ai = i < ta.length ? ta[i] : 0
-    const bi = i < tb.length ? tb[i] : 0
-    if (ai > bi) return true
-    if (ai < bi) return false
+  const ta = parseVersion(a).semver
+  const tb = parseVersion(b).semver
+  for (let i = 0; i < 3; i++) {
+    if (ta[i]! > tb[i]!) return true
+    if (ta[i]! < tb[i]!) return false
   }
   return false
 }
@@ -46,7 +54,7 @@ export function findNewerFirmware(
     const match = fname.match(/^(.+?)_([0-9][A-Za-z0-9.\-_]*)\.bin$/)
     if (!match) continue
     if (match[1] !== model) continue
-    const ver = match[2]
+    const ver = match[2]!
     if (isHigherVersion(ver, deviceVersion)) {
       candidates.push({ version: ver, filename: fname })
     }
@@ -61,7 +69,7 @@ export function findNewerFirmware(
     return 0
   })
 
-  return candidates[0]
+  return candidates[0] ?? null
 }
 
 export interface OtaResponse {
@@ -83,6 +91,7 @@ export interface OtaResponse {
  * Build the OTA POST response.
  */
 export function buildOtaResponse(opts: {
+  deviceId: string
   deviceVersion: string
   deviceModel: string
   binDir: string

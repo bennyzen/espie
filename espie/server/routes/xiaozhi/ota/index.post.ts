@@ -41,6 +41,7 @@ export default defineEventHandler(async (event) => {
   const binDir = process.env.BIN_DIR || './data/bin'
 
   const response = buildOtaResponse({
+    deviceId,
     deviceVersion,
     deviceModel,
     binDir,
