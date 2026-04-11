@@ -11,7 +11,6 @@ import { mp3ToPcm, pcmToOpusFrames } from './audio-converter'
 import { createVAD, type VADProcessor, type VADEvent } from '../providers/vad'
 import { createASR, type ASRProvider } from '../providers/asr'
 import { createTTS, type TTSProvider } from '../providers/tts'
-import { detectLanguage } from './language-voice'
 import { createLLMModel } from '../providers/llm'
 import { AgentSession } from '../agent/agent-session'
 import { createApiKeyResolver } from './config'
@@ -319,19 +318,19 @@ export class VoicePipeline {
     }
 
     try {
-      const text = await this.asr.transcribe(pcmData)
+      const result = await this.asr.transcribe(pcmData)
+      const text = result.text
 
       if (!text || !text.trim()) {
         this.state = 'listening'
         return
       }
 
-      // Detect language from user's speech and lock it for the entire response.
-      // Only update on successful detection — short utterances keep the previous language.
-      const lang = detectLanguage(text)
-      if (lang) {
-        this.tts.setLanguage(lang)
-        console.log(`[pipeline] Language: ${lang} (from: "${text.slice(0, 50)}")`)
+      // Use Whisper's language detection to set TTS voice for this response.
+      // Only update on detection — short utterances keep the previous language.
+      if (result.language) {
+        this.tts.setLanguage(result.language)
+        console.log(`[pipeline] Language: ${result.language} (from: "${text.slice(0, 50)}")`)
       }
 
       // Persist user message immediately and broadcast to web UI

@@ -5,8 +5,13 @@ import Groq from 'groq-sdk'
 import OpenAI from 'openai'
 import { createWavHeader } from '../utils/audio-converter'
 
+export interface ASRResult {
+  text: string
+  language: string | null  // ISO 639-1 code (e.g. 'en', 'it', 'fr') or null if unknown
+}
+
 export interface ASRProvider {
-  transcribe(pcmData: Buffer, sampleRate?: number): Promise<string>
+  transcribe(pcmData: Buffer, sampleRate?: number): Promise<ASRResult>
 }
 
 // Available Groq ASR models
@@ -30,7 +35,7 @@ export function createGroqASR(model?: string): ASRProvider {
   const asrModel = model || 'whisper-large-v3-turbo'
 
   return {
-    async transcribe(pcmData: Buffer, sampleRate = 16000): Promise<string> {
+    async transcribe(pcmData: Buffer, sampleRate = 16000): Promise<ASRResult> {
       // Wrap raw PCM in a WAV header for the Groq API
       const wavHeader = createWavHeader(pcmData.length, sampleRate, 1, 16)
       const wavBuffer = Buffer.concat([wavHeader, pcmData])
@@ -40,12 +45,14 @@ export function createGroqASR(model?: string): ASRProvider {
       const transcription = await groq.audio.transcriptions.create({
         file,
         model: asrModel,
-        language: 'en',
         temperature: 0.0,
-        response_format: 'json',
+        response_format: 'verbose_json',
       })
 
-      return transcription.text
+      return {
+        text: transcription.text,
+        language: (transcription as any).language || null,
+      }
     },
   }
 }
@@ -63,7 +70,7 @@ export function createOpenAIASR(): ASRProvider {
   const openai = new OpenAI({ apiKey })
 
   return {
-    async transcribe(pcmData: Buffer, sampleRate = 16000): Promise<string> {
+    async transcribe(pcmData: Buffer, sampleRate = 16000): Promise<ASRResult> {
       // Wrap raw PCM in a WAV header for the OpenAI API
       const wavHeader = createWavHeader(pcmData.length, sampleRate, 1, 16)
       const wavBuffer = Buffer.concat([wavHeader, pcmData])
@@ -73,10 +80,13 @@ export function createOpenAIASR(): ASRProvider {
       const transcription = await openai.audio.transcriptions.create({
         file,
         model: 'whisper-1',
-        language: 'en',
+        response_format: 'verbose_json',
       })
 
-      return transcription.text
+      return {
+        text: transcription.text,
+        language: (transcription as any).language || null,
+      }
     },
   }
 }
