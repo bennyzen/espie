@@ -88,14 +88,26 @@ docker compose build && docker compose up -d
 
 ## Firmware (ESP32)
 
-### Device
-- **Board**: `sp-esp32-s3-1.54-muma` (Spotpear ESP32-S3-1.54-MUMA)
+### Supported Boards
+The firmware auto-detects the board variant at boot by probing I2C for the ES8311 codec.
+
+**Spotpear** (`espie-spotpear`) — full-featured
 - **AliExpress listing**: "ESP32-S3 DeepSeek AI Chat Box 1.54 inch LCD N16R8"
 - **Chip**: ESP32-S3 N16R8 (16MB flash, 8MB PSRAM)
 - **Display**: 1.54" ST7789 240x240
 - **Audio codec**: ES8311
+- **Touch**: CST816D — tap toggles chat state, swipe navigates screens
+- **Buttons**: BOOT (GPIO 0) + Power button
 - **USB**: Built-in ESP32-S3 USB JTAG/serial (CDC ACM, NOT CH340) — shows as `/dev/ttyACM0`
-- **Buttons**: BOOT (GPIO 0) + Power button (must press power to turn on)
+
+**DevKit** (`espie-devkit`) — limited I/O, push-to-talk only
+- Generic ESP32-S3 1.54" TFT expansion adapter kit
+- **Audio**: MAX98357A (I2S output) + INMP441 (I2S input) — no hardware codec
+- **Touch**: None — no swipe gestures, no screen navigation
+- **Buttons**: BOOT (GPIO 0) acts as push-to-talk toggle, Vol Up (GPIO 39), Vol Down (GPIO 38)
+- **Wake word**: Not supported (removed — too unreliable)
+- **Interaction model**: Press BOOT to start/stop listening. No hands-free trigger.
+- **Missing vs Spotpear**: No touch, no swipe screens, no wake word, no charge detection, no LED
 
 ### Build & Flash
 Requires ESP-IDF v5.5.2+.

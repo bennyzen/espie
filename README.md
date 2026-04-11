@@ -48,7 +48,10 @@ The server runs on anything with Node.js 20+ -- a Raspberry Pi, a NUC, a laptop,
 
 **Currently tested with:**
 
-- **Spotpear ESP32-S3-1.54-MUMA** ("ESP32-S3 DeepSeek AI Chat Box 1.54 inch LCD N16R8") -- ESP32-S3 N16R8, 1.54" ST7789 LCD, ES8311 audio, CST816D touch
+- **Spotpear ESP32-S3-1.54-MUMA** ("ESP32-S3 DeepSeek AI Chat Box 1.54 inch LCD N16R8") -- ESP32-S3 N16R8, 1.54" ST7789 LCD, ES8311 audio, CST816D touch. Full-featured: touch gestures, swipe between screens, tap to talk.
+- **Generic ESP32-S3 1.54" TFT DevKit** (expansion adapter kit with MAX98357A + INMP441) -- ESP32-S3 N16R8, 1.54" ST7789 LCD, I2S audio, no touch. Push-to-talk only via BOOT button. No swipe gestures or screen navigation.
+
+The firmware auto-detects which board it's running on at boot (probes I2C for the ES8311 codec). No config change needed -- the same binary works on both.
 
 If you've tested another board, open an issue or PR to add it here.
 
