@@ -1,0 +1,28 @@
+{
+  "shared": {
+    "bootloader": { "path": "bootloader.bin", "offset": "0x0000" },
+    "partitionTable": { "path": "partition-table.bin", "offset": "0x8000" },
+    "otaData": { "path": "ota-data.bin", "offset": "0xD000" },
+    "nvsOffset": "0x9000"
+  },
+  "boards": [
+    {
+      "id": "espie-spotpear",
+      "name": "Spotpear ESP32-S3 1.54\" MUMA",
+      "description": "All-in-one with ES8311 codec, touch, battery",
+      "chipFamily": "ESP32-S3",
+      "image": "images/espie-spotpear.jpg",
+      "firmware": "espie-spotpear/1.0.0.bin",
+      "version": "1.0.0"
+    },
+    {
+      "id": "espie-devkit",
+      "name": "ESP32-S3 DevKit + 1.54\" TFT Expansion",
+      "description": "Generic N16R8 devkit with MAX98357A speaker, INMP441 mic",
+      "chipFamily": "ESP32-S3",
+      "image": "images/espie-devkit.jpg",
+      "firmware": "espie-devkit/1.0.0.bin",
+      "version": "1.0.0"
+    }
+  ]
+}
