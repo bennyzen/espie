@@ -10,7 +10,7 @@ A self-hosted, privacy-first voice assistant for the dozens of cheap ESP32-based
   <img src="espie-webui.webp" alt="Espie web dashboard" width="720">
 </p>
 
-**Why this exists.** The stock experience sends all your audio to Chinese servers, locks you into Chinese LLM providers, often replies with Chinese characters even when you speak English, and has a pretty bare-bones interface. Espie is a ground-up replacement: English-only, fully self-hosted, extensible through tools and plugins, and built on a modern Nuxt 4 / TypeScript stack instead of the original Python server.
+**Why this exists.** The stock experience sends all your audio to Chinese servers, locks you into Chinese LLM providers, often replies with Chinese characters even when you speak English, and has a pretty bare-bones interface. Espie is a ground-up replacement: fully self-hosted, multilingual, extensible through tools and plugins, and built on a modern Nuxt 4 / TypeScript stack instead of the original Python server.
 
 The firmware side is heavily patched too. The stock device shows a static emoji face and not much else. Espie adds chat bubbles, swipe gestures to navigate between screens (chat, now playing, weather, clock), Home Assistant smart home control, YouTube Music playback, local weather display, and scheduled proactive conversations. The whole thing is designed to be easy to extend with your own ideas — add a new screen, a new tool, a new voice trigger.
 
@@ -34,9 +34,9 @@ The ESP32 device connects to the Espie server over a single WebSocket. It stream
 |-----------|----------|:--------:|
 | **ASR** (Speech-to-Text) | Groq Whisper | Yes (free tier) |
 | **LLM** (Brain) | Any of 23+ providers via [pi-ai](https://github.com/nicepkg/pi-ai) | Yes |
-| **TTS** (Text-to-Speech) | Microsoft Edge TTS | No |
+| **TTS** (Text-to-Speech) | Microsoft Edge TTS (auto-language, 30+ languages) | No |
 | **VAD** (Voice Activity) | Silero VAD v5 (local ONNX) | No |
-| **Embeddings** (Memory) | FastEmbed / bge-small-en-v1.5 (local ONNX, 384 dims) | No |
+| **Embeddings** (Memory) | FastEmbed / bge-small-en-v1.5 (local ONNX, 384 dims, English-optimized) | No |
 | **Smart Home** | Home Assistant REST API | HA token |
 | **Database** | SQLite + sqlite-vec | No |
 
@@ -160,7 +160,8 @@ Open `http://your-server:8000` for the management dashboard:
 2. **VAD**: Silero VAD detects speech start/end (512-sample chunks, dual threshold)
 3. **ASR**: Speech segment sent to Groq Whisper for transcription
 4. **LLM**: Transcribed text -> agent with tools (Home Assistant, memory, plugins)
-5. **TTS**: Response streamed sentence-by-sentence -> Edge TTS -> Opus -> device
+5. **Language detection**: User's transcription analyzed via franc-min trigram analysis
+6. **TTS**: Response streamed sentence-by-sentence -> Edge TTS (voice auto-matched to detected language) -> Opus -> device
 
 Barge-in supported -- speak while the assistant is talking to interrupt.
 
@@ -189,7 +190,7 @@ When a schedule fires, Espie spins up a full agent session -- the same LLM, tool
 
 The assistant remembers facts across sessions using vector-based semantic search:
 
-- **Embeddings**: FastEmbed (BAAI/bge-small-en-v1.5, 384 dims, local ONNX, English only)
+- **Embeddings**: FastEmbed (BAAI/bge-small-en-v1.5, 384 dims, local ONNX, English-optimized)
 - **Storage**: SQLite with sqlite-vec for KNN vector search
 - **Dedup**: Cosine similarity > 0.9 updates existing facts instead of creating duplicates
 - **Tools**: `save_memory` and `recall_memory` available to the LLM agent
@@ -218,10 +219,16 @@ espie/                           # TypeScript server + dashboard
 firmware/                        # ESP32 firmware (C++, ESP-IDF)
 ```
 
+## Multilingual Support
+
+Speak any language -- Espie auto-detects it and responds with a native voice. Groq Whisper transcribes 50+ languages natively, the LLM mirrors whatever language you use, and Edge TTS auto-selects a gender-matched voice for 30+ languages (Italian, French, German, Spanish, Portuguese, Japanese, Korean, Chinese, Russian, Arabic, and many more). Language is detected once per turn from your speech, so every sentence in the response uses the same voice -- no mid-sentence switching.
+
+The embedding model (bge-small-en-v1.5) is English-optimized, so memory recall works best in English. Firmware UI strings are English.
+
 ## Constraints
 
-- **English only** -- ASR, TTS, embedding model, and prompts are all English
 - **OTA URL is compile-time** -- firmware must be rebuilt if the server IP changes
+- **Memory is English-optimized** -- semantic search uses an English embedding model; recall in other languages may be less accurate
 
 ## Credits
 

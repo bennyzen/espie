@@ -3,7 +3,7 @@
 ## Project Overview
 Self-hosted private voice assistant — an ESP32-based device (XiaoZhi hardware) with a TypeScript backend, replacing the default Chinese cloud platform (xiaozhi.me) for full privacy. Built on [78/xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) firmware with a modern Nuxt 4 full-stack server.
 
-**English only.** The firmware, voice pipeline, ASR, TTS, embedding model, and all prompts are configured for English. Chinese is not supported.
+**Multilingual voice.** Speak any language — ASR (Whisper) transcribes it, the LLM responds in kind, and TTS auto-selects a native voice (30+ languages via franc-min language detection). Embeddings (bge-small-en-v1.5) remain English-only, so memory recall works best in English. Firmware UI strings are English.
 
 ## Architecture
 - **espie/** — TypeScript backend + web dashboard (Nuxt 4, NuxtUI v4). The active server.
@@ -18,7 +18,7 @@ Self-hosted private voice assistant — an ESP32-based device (XiaoZhi hardware)
 |-----------|----------|----------|
 | ASR | Groq Whisper (`whisper-large-v3-turbo`) | Cloud API |
 | LLM | Any pi-ai provider (23+) — Anthropic, OpenAI, Google, Groq, etc. | Cloud API |
-| TTS | EdgeTTS (free, no API key) | Cloud (Microsoft) |
+| TTS | EdgeTTS (free, no API key, auto-language) | Cloud (Microsoft) |
 | VAD | SileroVAD (ONNX via avr-vad) | Local |
 | Embeddings | FastEmbed (BAAI/bge-small-en-v1.5, 384 dims) | Local |
 | Smart Home | Home Assistant REST API | Local |
@@ -57,7 +57,8 @@ espie/
 | NuxtUI v4 | Dashboard components, Tailwind CSS 4, dark mode |
 | pi-agent-core + pi-ai | Agent loop, tool calling, 23+ LLM providers |
 | better-sqlite3 + sqlite-vec | Database + vector search for memory |
-| fastembed | Local ONNX embeddings (bge-small-en-v1.5, 384 dims, English only) |
+| fastembed | Local ONNX embeddings (bge-small-en-v1.5, 384 dims, English-optimized) |
+| franc-min | Trigram-based language detection (30+ languages, used for TTS voice selection) |
 | @discordjs/opus / opusscript | Opus codec (native with WASM fallback) |
 | avr-vad | Silero VAD v5 via ONNX |
 | groq-sdk | Groq Whisper ASR |
@@ -219,9 +220,11 @@ The VAD provider (`server/providers/vad.ts`) runs Silero VAD v5 ONNX model direc
 LVGL fonts only contain specific Unicode ranges. If you `lv_label_set_text` with a codepoint the label's font doesn't include (e.g. FontAwesome icon bytes with a text font), LVGL will look up an invalid glyph descriptor and crash — there is no fallback font mechanism. Always set the label's font to match the codepoints you're rendering. Use `icon_font` or `large_icon_font` from the theme for FontAwesome glyphs, and the text font for regular characters. You cannot mix both in a single label.
 
 ## Language
-- **English only** — firmware, ASR, TTS, embedding model (bge-small-en), and all prompts are English. Chinese is not supported.
+- **Multilingual voice** — speak any language and Espie responds in it. ASR (Groq Whisper) transcribes natively, the LLM mirrors the user's language, and TTS auto-switches to a native Edge TTS voice via `franc-min` language detection (30+ languages with gender-matched voices). Language is detected once from the user's speech and locked for the entire response to prevent mid-sentence voice switching.
+- **Embeddings are English-optimized** — bge-small-en-v1.5 works best for English semantic search. Memory recall in other languages may be less accurate.
+- **Firmware UI is English** — device-side strings, prompts, and wake words are English.
+- **TTS auto-language implementation**: `server/utils/language-voice.ts` maps ISO 639-3 codes to Edge TTS voices. The pipeline (`voice-pipeline.ts`) calls `detectLanguage()` on the ASR transcription and sets the TTS voice via `tts.setLanguage()`. The `TTSProvider` interface includes `setLanguage(lang)` — Edge TTS uses it to pick a language-appropriate voice, OpenAI TTS ignores it (already multilingual).
 - Upstream firmware code/comments are mostly Chinese — translate when explaining
-- Device wake words and prompts are configured for English
 
 ## Custom Firmware Patches (not upstream)
 - **`firmware/main/display/lcd_display.cc`** — `SetEmotion()` hides emoji whenever chat messages exist
