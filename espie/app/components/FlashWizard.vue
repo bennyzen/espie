@@ -267,7 +267,7 @@ function logColor(level: string): string {
           </span>
           <span class="text-blue-400">{{ progress.percent }}%</span>
         </div>
-        <UProgress :value="progress.percent" size="sm" />
+        <UProgress :model-value="progress.percent" size="sm" />
       </div>
     </div>
 
