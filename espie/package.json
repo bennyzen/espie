@@ -29,6 +29,7 @@
     "edge-tts-universal": "^1.4.0",
     "esptool-js": "^0.6.0",
     "fastembed": "^2.1.0",
+    "franc-min": "^6.2.0",
     "groq-sdk": "^1.1.2",
     "node-cron": "^4.2.1",
     "nuxt": "^4.4.2",

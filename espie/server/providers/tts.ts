@@ -3,22 +3,34 @@
 
 import { Communicate } from 'edge-tts-universal'
 import OpenAI from 'openai'
+import { resolveVoice } from '../utils/language-voice'
 
 export interface TTSProvider {
   synthesize(text: string, signal?: AbortSignal): Promise<Buffer>
+  /** Set the language for all subsequent synthesize calls until cleared. */
+  setLanguage(lang: string | null): void
 }
 
 /**
  * Create a TTS provider backed by Microsoft Edge TTS.
- * Uses TTS_VOICE env var, defaulting to en-US-AriaNeural.
+ * Language is set externally (from the user's ASR transcription) and applies
+ * to every sentence in the response — no per-sentence detection.
  */
 export function createEdgeTTS(voiceOverride?: string): TTSProvider {
-  const voice = voiceOverride || process.env.TTS_VOICE || 'en-US-AriaNeural'
+  const defaultVoice = voiceOverride || process.env.TTS_VOICE || 'en-US-AriaNeural'
+  let lang: string | null = null
 
   return {
+    setLanguage(l: string | null) { lang = l },
+
     async synthesize(text: string, signal?: AbortSignal): Promise<Buffer> {
       if (signal?.aborted) {
         throw new Error('Aborted')
+      }
+
+      const voice = resolveVoice(text, defaultVoice, lang)
+      if (voice !== defaultVoice) {
+        console.log(`[tts] ${lang}: "${text.slice(0, 50)}…" → ${voice}`)
       }
 
       const communicate = new Communicate(text, { voice })
@@ -57,6 +69,8 @@ export function createOpenAITTS(voiceOverride?: string): TTSProvider {
   const voice = (voiceOverride || process.env.TTS_OPENAI_VOICE || 'nova') as 'nova' | 'alloy' | 'echo' | 'fable' | 'onyx' | 'shimmer'
 
   return {
+    setLanguage() {},
+
     async synthesize(text: string, signal?: AbortSignal): Promise<Buffer> {
       if (signal?.aborted) {
         throw new Error('Aborted')
