@@ -8,7 +8,7 @@ import type Database from 'better-sqlite3'
 import type { EmbeddingProvider } from '../providers/embeddings'
 import type { DeviceTransport } from '../utils/device-registry'
 import { createSaveMemoryTool, createRecallMemoryTool } from './memory-tools'
-import { createYTMusicTool } from './ytmusic'
+import { createYTMusicTool, createListMusicTool } from './ytmusic'
 import { createSayTool } from './say'
 import { createWeatherTool } from './weather'
 import { createListSchedulesTool, createCreateScheduleTool, createUpdateScheduleTool, createDeleteScheduleTool } from './schedule-tools'
@@ -47,6 +47,7 @@ export async function createSessionTools(options: ToolRegistryOptions): Promise<
   // Sync tools — always available
   const tools: AgentTool<any>[] = [
     createYTMusicTool(),
+    createListMusicTool(),
     createWeatherTool(),
     createSaveMemoryTool(memoryService),
     createRecallMemoryTool(memoryService),
@@ -91,6 +92,7 @@ export function createSyncTools(options: ToolRegistryOptions): {
 
   const tools: AgentTool<any>[] = [
     createYTMusicTool(),
+    createListMusicTool(),
     createWeatherTool(),
     createSaveMemoryTool(memoryService),
     createRecallMemoryTool(memoryService),

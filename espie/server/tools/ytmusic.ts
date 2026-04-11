@@ -51,6 +51,43 @@ interface YTMusicDetails {
  * Downloads MP3 files to YTMUSIC_DIR (default: ./data/ytmusic).
  * The VoicePipeline handles MP3->PCM->Opus conversion and streaming to device.
  */
+/**
+ * Create a tool that lists all downloaded tracks in the music library.
+ */
+export function createListMusicTool(): AgentTool<any> {
+  const ytmusicDir = process.env.YTMUSIC_DIR || './data/ytmusic'
+
+  return {
+    name: 'list_music',
+    label: 'list_music',
+    description:
+      'List all downloaded songs in the music library. Use this when the user asks what music is available, what songs have been downloaded, or wants to browse their library.',
+    parameters: Type.Object({}),
+    execute: async () => {
+      try {
+        if (!existsSync(ytmusicDir)) {
+          return { content: [{ type: 'text' as const, text: 'Music library is empty — no songs downloaded yet.' }], details: {} }
+        }
+        const files = readdirSync(ytmusicDir).filter(f => f.endsWith('.mp3'))
+        if (files.length === 0) {
+          return { content: [{ type: 'text' as const, text: 'Music library is empty — no songs downloaded yet.' }], details: {} }
+        }
+        const tracks = files.map((filename) => {
+          const match = filename.match(/^(.+?) - (.+?) \[.+?\]\.mp3$/)
+          return match ? `${match[1]} — ${match[2]}` : filename.replace('.mp3', '')
+        }).sort((a, b) => a.localeCompare(b))
+
+        return {
+          content: [{ type: 'text' as const, text: `Music library (${tracks.length} tracks):\n${tracks.map(t => `• ${t}`).join('\n')}` }],
+          details: { count: tracks.length },
+        }
+      } catch (err: any) {
+        return { content: [{ type: 'text' as const, text: `Could not list music library: ${err.message}` }], details: { error: err.message } }
+      }
+    },
+  }
+}
+
 export function createYTMusicTool(): AgentTool<any> {
   const ytmusicDir = process.env.YTMUSIC_DIR || './data/ytmusic'
 
