@@ -108,7 +108,7 @@ export function useFlashWizard() {
     try {
       const data = await $fetch<BoardsManifest>('/api/firmware/boards')
       sharedParts.value = data.shared
-      boards.value = data.boards.filter(b => b.chipFamily === chipFamily)
+      boards.value = data.boards.filter(b => chipFamily.startsWith(b.chipFamily))
 
       if (boards.value.length === 0) {
         log('warn', `No boards available for ${chipFamily}`)
