@@ -37,18 +37,15 @@ export interface BoardEntry {
   name: string
   description: string
   chipFamily: string
-  image: string
-  firmware: string
+  bootloader: { path: string; offset: string }
+  partitionTable: { path: string; offset: string }
+  otaData: { path: string; offset: string }
+  app: { path: string; offset: string }
   version: string
 }
 
 interface BoardsManifest {
-  shared: {
-    bootloader: { path: string; offset: string }
-    partitionTable: { path: string; offset: string }
-    otaData: { path: string; offset: string }
-    nvsOffset: string
-  }
+  nvsOffset: string
   boards: BoardEntry[]
 }
 
@@ -64,7 +61,7 @@ export function useFlashWizard() {
   // Multi-board state
   const boards = ref<BoardEntry[]>([])
   const selectedBoard = ref<BoardEntry | null>(null)
-  const sharedParts = ref<BoardsManifest['shared'] | null>(null)
+  const nvsOffset = ref('0x9000')
 
   // WiFi form state (pre-filled from server)
   const wifiSsid = ref('')
@@ -107,7 +104,7 @@ export function useFlashWizard() {
   async function loadBoards(chipFamily: string) {
     try {
       const data = await $fetch<BoardsManifest>('/api/firmware/boards')
-      sharedParts.value = data.shared
+      nvsOffset.value = data.nvsOffset
       boards.value = data.boards.filter(b => chipFamily.startsWith(b.chipFamily))
 
       if (boards.value.length === 0) {
@@ -119,7 +116,6 @@ export function useFlashWizard() {
       }
     } catch {
       boards.value = []
-      sharedParts.value = null
       log('warn', 'Could not load boards manifest from server')
     }
   }
@@ -233,16 +229,17 @@ export function useFlashWizard() {
         fileArray.push({ data, address: 0x20000 })
         partNames.push('custom firmware')
         log('info', `Custom firmware: ${(data.length / 1024).toFixed(0)} KB`)
-      } else if (selectedBoard.value && sharedParts.value) {
-        // Download shared parts (bootloader, partition table, OTA data)
-        const shared = sharedParts.value
-        const sharedEntries = [
-          { name: 'bootloader', ...shared.bootloader },
-          { name: 'partition-table', ...shared.partitionTable },
-          { name: 'ota-data', ...shared.otaData },
+      } else if (selectedBoard.value) {
+        // Download per-board parts (bootloader, partition table, OTA data, app)
+        const board = selectedBoard.value
+        const boardParts = [
+          { name: 'bootloader', ...board.bootloader },
+          { name: 'partition-table', ...board.partitionTable },
+          { name: 'ota-data', ...board.otaData },
+          { name: 'firmware', ...board.app },
         ]
 
-        for (const part of sharedEntries) {
+        for (const part of boardParts) {
           log('info', `Downloading ${part.name}...`)
           const response = await fetch(`/api/firmware/download/${part.path}`)
           if (!response.ok) throw new Error(`Failed to download ${part.name}: ${response.statusText}`)
@@ -252,15 +249,7 @@ export function useFlashWizard() {
           log('success', `${part.name}: ${(data.length / 1024).toFixed(0)} KB`)
         }
 
-        // Download board-specific firmware
-        const board = selectedBoard.value
-        log('info', `Downloading ${board.name} firmware (v${board.version})...`)
-        const fwResponse = await fetch(`/api/firmware/download/${board.firmware}`)
-        if (!fwResponse.ok) throw new Error(`Failed to download firmware: ${fwResponse.statusText}`)
-        const fwData = new Uint8Array(await fwResponse.arrayBuffer())
-        fileArray.push({ data: fwData, address: 0x20000 })
-        partNames.push('firmware')
-        log('success', `firmware: ${(fwData.length / 1024).toFixed(0)} KB`)
+        log('info', `Board: ${board.name} (v${board.version})`)
 
         // Generate NVS partition with WiFi config
         log('info', 'Generating NVS partition with WiFi config...')
@@ -275,8 +264,7 @@ export function useFlashWizard() {
         })
         if (!nvsResponse.ok) throw new Error('Failed to generate NVS partition')
         const nvsData = new Uint8Array(await nvsResponse.arrayBuffer())
-        const nvsOffset = parseInt(shared.nvsOffset, 16)
-        fileArray.push({ data: nvsData, address: nvsOffset })
+        fileArray.push({ data: nvsData, address: parseInt(nvsOffset.value, 16) })
         partNames.push('nvs')
         log('success', `NVS partition: ${(nvsData.length / 1024).toFixed(0)} KB (WiFi: ${wifiSsid.value})`)
       } else {

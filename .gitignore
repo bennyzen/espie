@@ -9,6 +9,7 @@ __pycache__/
 # Build artifacts
 firmware/build/
 firmware/managed_components/
+firmware/sdkconfig.boards/
 
 # IDE
 .idea/

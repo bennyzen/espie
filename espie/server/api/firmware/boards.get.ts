@@ -9,5 +9,13 @@ export default defineEventHandler(async () => {
     throw createError({ statusCode: 404, statusMessage: 'No boards.json found' })
   }
 
-  return JSON.parse(fs.readFileSync(boardsPath, 'utf-8'))
+  const manifest = JSON.parse(fs.readFileSync(boardsPath, 'utf-8'))
+
+  // Filter to boards that have firmware built and available on disk
+  manifest.boards = manifest.boards.filter((board: any) => {
+    if (!board.version || !board.app?.path) return false
+    return fs.existsSync(path.join(firmwareDir, board.app.path))
+  })
+
+  return manifest
 })
