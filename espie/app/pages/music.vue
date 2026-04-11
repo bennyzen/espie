@@ -66,15 +66,24 @@ function formatTime(seconds: number): string {
 
 const progress = computed(() => duration.value ? (currentTime.value / duration.value) * 100 : 0)
 
-async function remove(filename: string) {
-  if (playing.value === filename) stop()
+const deleteTarget = ref<MusicFile | null>(null)
+const deleteOpen = computed({
+  get: () => deleteTarget.value !== null,
+  set: (v) => { if (!v) deleteTarget.value = null },
+})
+
+async function confirmDelete() {
+  const file = deleteTarget.value
+  if (!file) return
+  if (playing.value === file.filename) stop()
   try {
-    await $fetch(`/api/music/${encodeURIComponent(filename)}`, { method: 'DELETE' })
+    await $fetch(`/api/music/${encodeURIComponent(file.filename)}`, { method: 'DELETE' })
     toast.add({ title: 'Deleted', color: 'success' })
     refresh()
   } catch (err) {
     toast.add({ title: 'Failed to delete', color: 'error', description: String(err) })
   }
+  deleteTarget.value = null
 }
 
 function formatSize(bytes: number): string {
@@ -131,15 +140,40 @@ onUnmounted(() => stop())
         </div>
         <span class="text-xs text-neutral-400 shrink-0">{{ formatSize(file.size) }}</span>
         <span class="text-xs text-neutral-400 shrink-0 hidden sm:inline">{{ formatDate(file.createdAt) }}</span>
+        <a
+          :href="`/api/music/${encodeURIComponent(file.filename)}`"
+          :download="file.filename"
+          class="opacity-0 group-hover:opacity-100 transition"
+        >
+          <UButton
+            icon="i-lucide-download"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            tabindex="-1"
+          />
+        </a>
         <UButton
           icon="i-lucide-trash-2"
           size="xs"
           color="error"
           variant="ghost"
           class="opacity-0 group-hover:opacity-100 transition"
-          @click="remove(file.filename)"
+          @click="deleteTarget = file"
         />
       </div>
     </div>
+
+    <UModal v-model:open="deleteOpen" :ui="{ width: 'sm:max-w-sm' }">
+      <template #content>
+        <div class="p-6 space-y-4">
+          <p class="text-sm">Delete <strong>{{ deleteTarget?.title }}</strong> by {{ deleteTarget?.artist }}?</p>
+          <div class="flex justify-end gap-2">
+            <UButton label="Cancel" color="neutral" variant="ghost" @click="deleteTarget = null" />
+            <UButton label="Delete" color="error" @click="confirmDelete" />
+          </div>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>
