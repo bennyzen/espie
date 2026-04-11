@@ -5,7 +5,9 @@ const {
   progress,
   chipInfo,
   errorMessage,
-  manifest,
+  boards,
+  selectedBoard,
+  selectBoard,
   isWebSerialSupported,
   isLinux,
   wifiSsid,
@@ -45,14 +47,15 @@ function onFileSelected(event: Event) {
 }
 
 // Step labels for indicator
-const steps = ['Connect', 'WiFi', 'Flash', 'Done']
+const steps = ['Connect', 'Board', 'WiFi', 'Flash', 'Done']
 const stepIndex = computed(() => {
   switch (step.value) {
     case 'idle': return 0
     case 'connecting': return 0
-    case 'connected': return 1
-    case 'flashing': return 2
-    case 'complete': return 3
+    case 'board-select': return 1
+    case 'connected': return 2
+    case 'flashing': return 3
+    case 'complete': return 4
     case 'error': return -1
     default: return 0
   }
@@ -163,6 +166,44 @@ function logColor(level: string): string {
       </UAlert>
     </div>
 
+    <!-- Step: Board Select -->
+    <div v-else-if="step === 'board-select'">
+      <div class="flex items-center gap-2 mb-4">
+        <UBadge color="success" variant="subtle">
+          {{ chipInfo?.description || chipInfo?.chipName || 'Connected' }}
+        </UBadge>
+        <span class="text-xs text-neutral-500 font-mono">{{ chipInfo?.mac }}</span>
+      </div>
+
+      <div v-if="boards.length > 0">
+        <p class="text-sm text-neutral-400 mb-3">Select your board:</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            v-for="board in boards"
+            :key="board.id"
+            class="text-left rounded-lg border p-4 transition-colors cursor-pointer"
+            :class="selectedBoard?.id === board.id
+              ? 'border-blue-500 bg-blue-500/10'
+              : 'border-neutral-700 hover:border-neutral-500 bg-neutral-900'"
+            @click="selectBoard(board)"
+          >
+            <div class="font-medium text-sm">{{ board.name }}</div>
+            <div class="text-xs text-neutral-400 mt-1">{{ board.description }}</div>
+            <div class="text-xs text-neutral-500 mt-2">v{{ board.version }}</div>
+          </button>
+        </div>
+      </div>
+
+      <UAlert
+        v-else
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-alert-triangle"
+        title="No supported boards"
+        description="No firmware is available for this chip. Check that firmware binaries are present in the data/firmware/ directory."
+      />
+    </div>
+
     <!-- Step: Connected (WiFi config) -->
     <div v-else-if="step === 'connected'">
       <div class="flex items-center gap-2 mb-4">
@@ -193,8 +234,8 @@ function logColor(level: string): string {
         >
           Flash Firmware
         </UButton>
-        <span v-if="manifest" class="text-sm text-neutral-400">
-          {{ manifest.model }} v{{ manifest.version }}
+        <span v-if="selectedBoard" class="text-sm text-neutral-400">
+          {{ selectedBoard.name }} v{{ selectedBoard.version }}
         </span>
         <span v-else-if="customFirmware" class="text-sm text-neutral-400">
           Custom: {{ customFirmware.name }} ({{ (customFirmware.size / 1024).toFixed(0) }} KB)
@@ -243,9 +284,9 @@ function logColor(level: string): string {
       </div>
 
       <div class="bg-neutral-900 rounded-lg p-4 space-y-1.5 text-sm">
-        <div v-if="manifest" class="flex justify-between">
+        <div v-if="selectedBoard" class="flex justify-between">
           <span class="text-green-400">Firmware</span>
-          <span>{{ manifest.model }} v{{ manifest.version }}</span>
+          <span>{{ selectedBoard.name }} v{{ selectedBoard.version }}</span>
         </div>
         <div class="flex justify-between">
           <span class="text-green-400">WiFi</span>
