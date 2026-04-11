@@ -8,7 +8,7 @@ declare global {
   }
 }
 
-export type WizardStep = 'idle' | 'connecting' | 'connected' | 'flashing' | 'complete' | 'error'
+export type WizardStep = 'idle' | 'connecting' | 'board-select' | 'connected' | 'flashing' | 'complete' | 'error'
 
 export interface FlashLogEntry {
   timestamp: number
@@ -32,12 +32,24 @@ export interface ChipInfo {
   features: string[]
 }
 
-export interface FirmwareManifest {
-  model: string
+export interface BoardEntry {
+  id: string
+  name: string
+  description: string
   chipFamily: string
-  parts: { name: string; path: string; offset: string }[]
-  nvsOffset: string
+  image: string
+  firmware: string
   version: string
+}
+
+interface BoardsManifest {
+  shared: {
+    bootloader: { path: string; offset: string }
+    partitionTable: { path: string; offset: string }
+    otaData: { path: string; offset: string }
+    nvsOffset: string
+  }
+  boards: BoardEntry[]
 }
 
 export function useFlashWizard() {
@@ -46,9 +58,13 @@ export function useFlashWizard() {
   const progress = ref<FlashProgress | null>(null)
   const chipInfo = ref<ChipInfo | null>(null)
   const errorMessage = ref('')
-  const manifest = ref<FirmwareManifest | null>(null)
   const isWebSerialSupported = ref(false)
   const isLinux = ref(false)
+
+  // Multi-board state
+  const boards = ref<BoardEntry[]>([])
+  const selectedBoard = ref<BoardEntry | null>(null)
+  const sharedParts = ref<BoardsManifest['shared'] | null>(null)
 
   // WiFi form state (pre-filled from server)
   const wifiSsid = ref('')
@@ -87,15 +103,32 @@ export function useFlashWizard() {
     }
   }
 
-  // --- Load firmware manifest ---
-  async function loadManifest() {
+  // --- Load boards manifest and filter by chip ---
+  async function loadBoards(chipFamily: string) {
     try {
-      manifest.value = await $fetch<FirmwareManifest>('/api/firmware/manifest')
-      return true
+      const data = await $fetch<BoardsManifest>('/api/firmware/boards')
+      sharedParts.value = data.shared
+      boards.value = data.boards.filter(b => b.chipFamily === chipFamily)
+
+      if (boards.value.length === 0) {
+        log('warn', `No boards available for ${chipFamily}`)
+      } else if (boards.value.length === 1) {
+        selectBoard(boards.value[0]!)
+      } else {
+        log('info', `Found ${boards.value.length} boards for ${chipFamily}`)
+      }
     } catch {
-      manifest.value = null
-      return false
+      boards.value = []
+      sharedParts.value = null
+      log('warn', 'Could not load boards manifest from server')
     }
+  }
+
+  // --- Select a board ---
+  function selectBoard(board: BoardEntry) {
+    selectedBoard.value = board
+    log('success', `Selected board: ${board.name}`)
+    step.value = 'connected'
   }
 
   // --- Connect to device ---
@@ -158,9 +191,13 @@ export function useFlashWizard() {
       log('info', `MAC: ${mac}`)
       log('info', `Features: ${features.join(', ')}`)
 
-      step.value = 'connected'
+      await Promise.all([loadConfig(), loadBoards(chip)])
 
-      await Promise.all([loadConfig(), loadManifest()])
+      // If loadBoards auto-selected a single board, step is already 'connected'.
+      // Otherwise, let the user pick.
+      if (!selectedBoard.value) {
+        step.value = 'board-select'
+      }
     } catch (err: any) {
       if (err.name === 'NotFoundError') {
         step.value = 'idle'
@@ -196,8 +233,16 @@ export function useFlashWizard() {
         fileArray.push({ data, address: 0x20000 })
         partNames.push('custom firmware')
         log('info', `Custom firmware: ${(data.length / 1024).toFixed(0)} KB`)
-      } else if (manifest.value) {
-        for (const part of manifest.value.parts) {
+      } else if (selectedBoard.value && sharedParts.value) {
+        // Download shared parts (bootloader, partition table, OTA data)
+        const shared = sharedParts.value
+        const sharedEntries = [
+          { name: 'bootloader', ...shared.bootloader },
+          { name: 'partition-table', ...shared.partitionTable },
+          { name: 'ota-data', ...shared.otaData },
+        ]
+
+        for (const part of sharedEntries) {
           log('info', `Downloading ${part.name}...`)
           const response = await fetch(`/api/firmware/download/${part.path}`)
           if (!response.ok) throw new Error(`Failed to download ${part.name}: ${response.statusText}`)
@@ -207,6 +252,17 @@ export function useFlashWizard() {
           log('success', `${part.name}: ${(data.length / 1024).toFixed(0)} KB`)
         }
 
+        // Download board-specific firmware
+        const board = selectedBoard.value
+        log('info', `Downloading ${board.name} firmware (v${board.version})...`)
+        const fwResponse = await fetch(`/api/firmware/download/${board.firmware}`)
+        if (!fwResponse.ok) throw new Error(`Failed to download firmware: ${fwResponse.statusText}`)
+        const fwData = new Uint8Array(await fwResponse.arrayBuffer())
+        fileArray.push({ data: fwData, address: 0x20000 })
+        partNames.push('firmware')
+        log('success', `firmware: ${(fwData.length / 1024).toFixed(0)} KB`)
+
+        // Generate NVS partition with WiFi config
         log('info', 'Generating NVS partition with WiFi config...')
         const nvsResponse = await fetch('/api/firmware/nvs', {
           method: 'POST',
@@ -219,12 +275,12 @@ export function useFlashWizard() {
         })
         if (!nvsResponse.ok) throw new Error('Failed to generate NVS partition')
         const nvsData = new Uint8Array(await nvsResponse.arrayBuffer())
-        const nvsOffset = parseInt(manifest.value.nvsOffset, 16)
+        const nvsOffset = parseInt(shared.nvsOffset, 16)
         fileArray.push({ data: nvsData, address: nvsOffset })
         partNames.push('nvs')
         log('success', `NVS partition: ${(nvsData.length / 1024).toFixed(0)} KB (WiFi: ${wifiSsid.value})`)
       } else {
-        errorMessage.value = 'No firmware available. Upload a custom firmware or run dev-ota.sh first.'
+        errorMessage.value = 'No board selected. Upload a custom firmware or select a board first.'
         step.value = 'error'
         return
       }
@@ -302,6 +358,8 @@ export function useFlashWizard() {
     chipInfo.value = null
     errorMessage.value = ''
     customFirmware.value = null
+    selectedBoard.value = null
+    boards.value = []
     disconnect()
   }
 
@@ -324,7 +382,8 @@ export function useFlashWizard() {
     progress: readonly(progress),
     chipInfo: readonly(chipInfo),
     errorMessage: readonly(errorMessage),
-    manifest: readonly(manifest),
+    boards: readonly(boards),
+    selectedBoard: readonly(selectedBoard),
     isWebSerialSupported: readonly(isWebSerialSupported),
     isLinux: readonly(isLinux),
     wifiSsid,
@@ -333,6 +392,7 @@ export function useFlashWizard() {
     customFirmware,
     connect,
     flash,
+    selectBoard,
     reset,
     retry,
   }
