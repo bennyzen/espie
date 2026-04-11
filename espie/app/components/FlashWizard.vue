@@ -298,6 +298,15 @@ function logColor(level: string): string {
         </div>
       </div>
 
+      <UAlert
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-power"
+        class="mt-3"
+        title="Device may need a manual reset"
+        description="ESP32-S3 boards often don't reboot automatically after flashing. Press the reset or power button on the device to start it."
+      />
+
       <p class="text-sm text-neutral-400 mt-3">
         <UIcon name="i-lucide-clock" class="size-4 inline" />
         Waiting for device to appear in the list below...
