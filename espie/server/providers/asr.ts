@@ -14,6 +14,24 @@ export interface ASRProvider {
   transcribe(pcmData: Buffer, sampleRate?: number): Promise<ASRResult>
 }
 
+// Whisper returns full language names ("English", "Italian"), not ISO codes.
+// Map to ISO 639-1 for Edge TTS voice selection.
+const WHISPER_LANG_TO_ISO: Record<string, string> = {
+  english: 'en', italian: 'it', french: 'fr', german: 'de', spanish: 'es',
+  portuguese: 'pt', dutch: 'nl', polish: 'pl', russian: 'ru', japanese: 'ja',
+  chinese: 'zh', korean: 'ko', arabic: 'ar', hindi: 'hi', turkish: 'tr',
+  ukrainian: 'uk', swedish: 'sv', danish: 'da', norwegian: 'no', finnish: 'fi',
+  czech: 'cs', greek: 'el', romanian: 'ro', hungarian: 'hu', bulgarian: 'bg',
+  croatian: 'hr', slovak: 'sk', catalan: 'ca', indonesian: 'id', malay: 'ms',
+  vietnamese: 'vi', thai: 'th', hebrew: 'he', persian: 'fa', tamil: 'ta',
+  telugu: 'te', bengali: 'bn', urdu: 'ur', filipino: 'tl', swahili: 'sw',
+}
+
+function normalizeLanguage(whisperLang: string | undefined | null): string | null {
+  if (!whisperLang) return null
+  return WHISPER_LANG_TO_ISO[whisperLang.toLowerCase()] || null
+}
+
 // Available Groq ASR models
 export const GROQ_ASR_MODELS = [
   { id: 'whisper-large-v3-turbo', name: 'Whisper Large V3 Turbo (recommended)' },
@@ -49,9 +67,12 @@ export function createGroqASR(model?: string): ASRProvider {
         response_format: 'verbose_json',
       })
 
+      const text = typeof transcription.text === 'string' ? transcription.text
+        : typeof transcription === 'string' ? transcription : ''
+
       return {
-        text: transcription.text,
-        language: (transcription as any).language || null,
+        text,
+        language: normalizeLanguage((transcription as any).language),
       }
     },
   }
@@ -83,9 +104,12 @@ export function createOpenAIASR(): ASRProvider {
         response_format: 'verbose_json',
       })
 
+      const text = typeof transcription.text === 'string' ? transcription.text
+        : typeof transcription === 'string' ? transcription : ''
+
       return {
-        text: transcription.text,
-        language: (transcription as any).language || null,
+        text,
+        language: normalizeLanguage((transcription as any).language),
       }
     },
   }
