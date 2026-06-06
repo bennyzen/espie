@@ -4,6 +4,7 @@
 import Groq from 'groq-sdk'
 import OpenAI from 'openai'
 import { createWavHeader } from '../utils/audio-converter'
+import { loadConfig } from '../utils/config'
 
 export interface ASRResult {
   text: string
@@ -44,9 +45,11 @@ export const GROQ_ASR_MODELS = [
  * Requires GROQ_API_KEY environment variable.
  */
 export function createGroqASR(model?: string): ASRProvider {
-  const apiKey = process.env.GROQ_API_KEY
+  // Resolve the key the same way the LLM does: config (set via the /config UI,
+  // stored in data/.config.yaml api_keys.groq) first, then the env var.
+  const apiKey = loadConfig().api_keys?.groq || process.env.GROQ_API_KEY
   if (!apiKey) {
-    throw new Error('GROQ_API_KEY environment variable is required for ASR')
+    throw new Error('Groq API key not set — add it in the /config page (api_keys.groq) or set GROQ_API_KEY')
   }
 
   const groq = new Groq({ apiKey })
@@ -83,9 +86,9 @@ export function createGroqASR(model?: string): ASRProvider {
  * Requires OPENAI_API_KEY environment variable.
  */
 export function createOpenAIASR(): ASRProvider {
-  const apiKey = process.env.OPENAI_API_KEY
+  const apiKey = loadConfig().api_keys?.openai || process.env.OPENAI_API_KEY
   if (!apiKey) {
-    throw new Error('OPENAI_API_KEY environment variable is required for OpenAI ASR')
+    throw new Error('OpenAI API key not set — add it in the /config page (api_keys.openai) or set OPENAI_API_KEY')
   }
 
   const openai = new OpenAI({ apiKey })
