@@ -1,0 +1,9 @@
+# Espie build overlay for the Spotpear ESP32-S3-1.54-MUMA board.
+# IMPORTANT: CONFIG_OTA_URL is intentionally EMPTY so no server IP is baked
+# into the binary. The server URL is provisioned into NVS by the browser flash
+# wizard (namespace "wifi", key "ota_url") and read at runtime by
+# Ota::GetCheckVersionUrl(). This prevents shipping a binary tied to one network.
+CONFIG_BOARD_TYPE_SPOTPEAR_ESP32_S3_1_54_MUMA=y
+CONFIG_OTA_URL=""
+CONFIG_LANGUAGE_EN_US=y
+CONFIG_USE_WECHAT_MESSAGE_STYLE=y
