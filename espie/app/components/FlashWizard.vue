@@ -220,8 +220,12 @@ function logColor(level: string): string {
         <UFormField label="Password">
           <UInput v-model="wifiPassword" type="password" placeholder="Enter WiFi password" />
         </UFormField>
-        <UFormField label="Server URL" class="sm:col-span-2">
-          <UInput v-model="serverUrl" disabled />
+        <UFormField
+          label="Server URL"
+          class="sm:col-span-2"
+          help="The address the device connects to. Must be reachable from the device on your network — not localhost/127.0.0.1."
+        >
+          <UInput v-model="serverUrl" placeholder="http://192.168.1.50:8000" />
         </UFormField>
       </div>
 
