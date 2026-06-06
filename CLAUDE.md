@@ -82,6 +82,8 @@ NUXT_PORT=8000 npx nuxt dev --host 0.0.0.0
 ```
 Logs are local (`npx nuxt dev` stdout). Tests: `npx vitest run` from `espie/`.
 
+**Git workflow — solo project.** Commit **directly to `main`**. Do NOT create feature branches or PRs; they're pure overhead here. Push is opt-in — ask before `git push`.
+
 ### Production Deployment
 ```bash
 docker compose build && docker compose up -d
@@ -148,6 +150,8 @@ The Devices page (`/devices`) has a built-in flash wizard that provisions ESP32 
 
 **NVS generation**: The server generates a 16KB NVS partition binary on-the-fly (`POST /api/firmware/nvs`) containing WiFi SSID, password, and OTA URL. Written to flash at offset 0x9000 alongside the firmware.
 
+> **NVS key-field padding gotcha** (`server/utils/nvs-generator.ts`): the 16-byte key field MUST be zero-padded after the null terminator, NOT `0xFF`-padded. ESP-IDF includes the full key field in its key-lookup hash, so a `0xFF`-padded key reads back as not-found (`ESP_ERR_NVS_NOT_FOUND`) even though the data is intact and `strings` shows it. This silently broke `ota_url` provisioning (device booted, joined WiFi, but `Ota: Check version URL is not properly set`). `ssid`/`password` masked it because the firmware re-saves them zero-padded on every WiFi connect; `ota_url` is never re-saved. Verify generator output is byte-identical to esp-idf's `nvs_partition_gen.py`; a regression test pins the padding.
+
 **Limitations**: Web Serial requires a Chromium browser (Chrome, Edge, Brave) and HTTPS or localhost. Firefox and Safari are not supported. The ESP32-S3 native USB requires a software reset after flashing (hardware RTS reset doesn't work).
 
 ### OTA Dev Workflow
@@ -172,6 +176,9 @@ rsync espie/data/bin/*.bin your-server:~/xiaozhi/espie/data/bin/
 - No need to hold BOOT for normal flashing (auto-download circuit)
 - USB shows as Espressif CDC ACM device, not CH340/CP2102
 - mDNS does NOT work from ESP32 — use the server's actual IP address
+- **ESP32-S3 native USB reset quirk**: the chip enumerates as USB-Serial-JTAG (`303a:1001`). esptool's "Hard resetting via RTS pin" is a **no-op**, and `esptool run` does not reliably reboot into the app. To actually reset: pulse RTS via pyserial (set RTS true→false), or press the physical reset/power button. `idf.py flash` does NOT touch NVS (0x9000).
+- **Read flash / dump NVS**: `~/.local/bin/esptool --chip esp32s3 --port /dev/ttyACM0 --before default-reset read-flash 0x9000 0x4000 nvs.bin` (NVS is at 0x9000, 16K). Generate known-good NVS with esp-idf's `nvs_partition_gen.py generate <csv> <out> 0x4000` (its `nvs_tool.py` reader may crash on real images).
+- **Best "did it connect" oracle is the server, not serial**: `docker logs espie-dev` shows `[ota] POST from device <mac>`; `curl -s localhost:8000/api/devices` shows live state. Reboot a connected device via `POST /api/devices/reboot {"deviceId":"<mac>"}`.
 
 ### Monitoring & Debugging
 `firmware/monitor.sh` wraps `idf.py monitor` with filtered output and log capture.
@@ -186,6 +193,7 @@ cd firmware/
 - Press `Ctrl+]` to quit
 - Uses `--no-reset` so the device is not rebooted on connect
 - To decode crash backtraces: `xtensa-esp32s3-elf-addr2line -fe build/xiaozhi.elf 0x<addr>`
+- **Headless serial capture** (no interactive TTY): `monitor.sh`/`idf.py monitor` fail without a TTY, and plain `cat /dev/ttyACM0` stalls (the USB-CDC console gates TX on DTR). Use a small pyserial script that asserts DTR and reads — pulse RTS first to reboot and capture a full boot.
 
 ### Display & Touch
 - **UI style**: Chat bubbles (green=user, gray=assistant) via `CONFIG_USE_WECHAT_MESSAGE_STYLE=y`
