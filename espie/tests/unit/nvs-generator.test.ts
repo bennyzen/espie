@@ -28,6 +28,20 @@ describe('generateNvsPartition', () => {
     expect(buf[88]).toBe(1) // namespace index value
   })
 
+  // Regression: ESP-IDF includes the full 16-byte key field in its key-lookup
+  // hash and zero-pads after the null terminator. Padding with 0xFF made the
+  // device silently fail to find keys (e.g. ota_url), even though the data was
+  // intact — the bug behind "device won't connect" despite a provisioned NVS.
+  it('zero-pads the key field after the null terminator (not 0xFF)', () => {
+    const buf = generateNvsPartition({
+      wifi: { ssid: 'net', password: 'pw', ota_url: 'http://192.168.1.1:8000/xiaozhi/ota/' },
+    })
+    // namespace entry "wifi" @64: key bytes 72-87, "wifi"=72-75, null=76, pad 77-87
+    for (let i = 76; i < 88; i++) expect(buf[i]).toBe(0)
+    // ssid string entry @96: key bytes 104-119, "ssid"=104-107, null=108, pad 109-119
+    for (let i = 108; i < 120; i++) expect(buf[i]).toBe(0)
+  })
+
   it('writes ssid string entry with correct type', () => {
     const buf = generateNvsPartition({ wifi: { ssid: 'mynet', password: 'pass' } })
     expect(buf[96]).toBe(1) // nsIndex = wifi namespace

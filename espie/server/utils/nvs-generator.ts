@@ -85,7 +85,11 @@ export function generateNvsPartition(config: NvsConfig): Uint8Array {
 
     const keyBytes = new TextEncoder().encode(name)
     for (let i = 0; i < 16; i++) {
-      buf[off + 8 + i] = i < keyBytes.length ? keyBytes[i]! : i === keyBytes.length ? 0 : 0xFF
+      // Pad the 16-byte key field with 0x00 (NOT 0xFF) after the key bytes.
+      // ESP-IDF includes the full key field in its key-lookup hash and zero-pads
+      // after the null terminator; 0xFF padding makes the device's NVS silently
+      // fail to find the key (lookup hash mismatch) even though the data is intact.
+      buf[off + 8 + i] = i < keyBytes.length ? keyBytes[i]! : 0
     }
 
     buf[off + 24] = nsIndexValue
@@ -115,7 +119,11 @@ export function generateNvsPartition(config: NvsConfig): Uint8Array {
 
     const keyBytes = new TextEncoder().encode(key)
     for (let i = 0; i < 16; i++) {
-      buf[off + 8 + i] = i < keyBytes.length ? keyBytes[i]! : i === keyBytes.length ? 0 : 0xFF
+      // Pad the 16-byte key field with 0x00 (NOT 0xFF) after the key bytes.
+      // ESP-IDF includes the full key field in its key-lookup hash and zero-pads
+      // after the null terminator; 0xFF padding makes the device's NVS silently
+      // fail to find the key (lookup hash mismatch) even though the data is intact.
+      buf[off + 8 + i] = i < keyBytes.length ? keyBytes[i]! : 0
     }
 
     view.setUint16(off + 24, dataSize, true)
