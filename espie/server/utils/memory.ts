@@ -1,7 +1,7 @@
 // Memory Service — persistent fact storage with vector embeddings.
-// Saves facts with deduplication (cosine similarity > 0.9),
-// retrieves top-K relevant facts via sqlite-vec KNN search,
-// and tracks access patterns for memory management.
+// Saves facts (dedup is LLM-driven via replace_id in the save_memory tool,
+// not a similarity threshold), retrieves top-K relevant facts via sqlite-vec
+// KNN search, and tracks access patterns for memory management.
 
 import { randomUUID } from 'node:crypto'
 import type Database from 'better-sqlite3'
@@ -28,9 +28,9 @@ export class MemoryService {
   }
 
   /**
-   * Save a fact to memory with deduplication.
-   * If a semantically similar fact exists (cosine distance < 0.1, i.e. similarity > 0.9),
-   * updates the existing fact instead of creating a new one.
+   * Save a fact to memory. Deduplication is not done here — the LLM agent
+   * decides when to replace an existing fact via replace_id in the save_memory
+   * tool (see memory-tools.ts), which deletes the old fact before this insert.
    */
   async save(content: string, sourceMessageId?: string): Promise<SaveResult> {
     const [embedding] = await this.embeddings.embed([content])

@@ -12,7 +12,7 @@ A self-hosted, privacy-first voice assistant for the dozens of cheap ESP32-based
 
 **Why this exists.** The stock experience sends all your audio to Chinese servers, locks you into Chinese LLM providers, often replies with Chinese characters even when you speak English, and has a pretty bare-bones interface. Espie is a ground-up replacement: fully self-hosted, multilingual, extensible through tools and plugins, and built on a modern Nuxt 4 / TypeScript stack instead of the original Python server.
 
-The firmware side is heavily patched too. The stock device shows a static emoji face and not much else. Espie adds chat bubbles, swipe gestures to navigate between screens (chat, now playing, weather, clock), Home Assistant smart home control, YouTube Music playback, local weather display, and scheduled proactive conversations. The whole thing is designed to be easy to extend with your own ideas — add a new screen, a new tool, a new voice trigger.
+The firmware side is heavily patched too. The stock device shows a static emoji face and not much else. Espie adds chat bubbles, swipe gestures to navigate between screens (clock, chat, now playing, settings), Home Assistant smart home control, YouTube Music playback, local weather display (on the clock screen), and scheduled proactive conversations. The whole thing is designed to be easy to extend with your own ideas — add a new screen, a new tool, a new voice trigger.
 
 ## Contents
 
@@ -74,7 +74,7 @@ The server runs anywhere Docker does -- a Raspberry Pi, a NUC, a laptop, a VM (L
 - **Spotpear ESP32-S3-1.54-MUMA** ("ESP32-S3 DeepSeek AI Chat Box 1.54 inch LCD N16R8") -- ESP32-S3 N16R8, 1.54" ST7789 LCD, ES8311 audio, CST816D touch. Full-featured: touch gestures, swipe between screens, tap to talk.
 - **Generic ESP32-S3 1.54" TFT DevKit** (expansion adapter kit with MAX98357A + INMP441) -- ESP32-S3 N16R8, 1.54" ST7789 LCD, I2S audio, no touch. Push-to-talk only via BOOT button. No swipe gestures or screen navigation.
 
-The firmware auto-detects which board it's running on at boot (probes I2C for the ES8311 codec). No config change needed -- the same binary works on both.
+Board selection is a compile-time setting (`CONFIG_BOARD_TYPE`) baked into each build -- there is no runtime auto-detection, so every board needs its own firmware binary. The pre-built firmware in the browser flash wizard targets the Spotpear board; for the DevKit, build from source (see [Firmware Development](#firmware-development)).
 
 If you've tested another board, open an issue or PR to add it here.
 
@@ -178,7 +178,7 @@ Open `http://your-server:8000` for the management dashboard:
 2. **VAD**: Silero VAD detects speech start/end (512-sample chunks, dual threshold)
 3. **ASR**: Speech segment sent to Groq Whisper for transcription
 4. **LLM**: Transcribed text -> agent with tools (Home Assistant, memory, plugins)
-5. **Language detection**: User's transcription analyzed via franc-min trigram analysis
+5. **Language detection**: Whisper reports the spoken language alongside the transcription, which selects the TTS voice
 6. **TTS**: Response streamed sentence-by-sentence -> Edge TTS (voice auto-matched to detected language) -> Opus -> device
 
 Barge-in supported -- speak while the assistant is talking to interrupt.
@@ -210,7 +210,7 @@ The assistant remembers facts across sessions using vector-based semantic search
 
 - **Embeddings**: FastEmbed (BAAI/bge-small-en-v1.5, 384 dims, local ONNX, English-optimized)
 - **Storage**: SQLite with sqlite-vec for KNN vector search
-- **Dedup**: Cosine similarity > 0.9 updates existing facts instead of creating duplicates
+- **Dedup**: The LLM agent decides when an existing fact should be replaced (via `replace_id` in the `save_memory` tool) instead of creating a duplicate
 - **Tools**: `save_memory` and `recall_memory` available to the LLM agent
 
 ## Home Assistant Integration

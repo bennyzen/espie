@@ -3,7 +3,7 @@
 ## Project Overview
 Self-hosted private voice assistant — an ESP32-based device (XiaoZhi hardware) with a TypeScript backend, replacing the default Chinese cloud platform (xiaozhi.me) for full privacy. Built on [78/xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) firmware with a modern Nuxt 4 full-stack server.
 
-**Multilingual voice.** Speak any language — ASR (Whisper) transcribes it, the LLM responds in kind, and TTS auto-selects a native voice (30+ languages via franc-min language detection). Embeddings (bge-small-en-v1.5) remain English-only, so memory recall works best in English. Firmware UI strings are English.
+**Multilingual voice.** Speak any language — ASR (Whisper) transcribes it and reports the spoken language, the LLM responds in kind, and TTS auto-selects a native voice (30+ languages). Embeddings (bge-small-en-v1.5) remain English-only, so memory recall works best in English. Firmware UI strings are English.
 
 ## Architecture
 - **espie/** — TypeScript backend + web dashboard (Nuxt 4, NuxtUI v4). The active server.
@@ -58,7 +58,6 @@ espie/
 | pi-agent-core + pi-ai | Agent loop, tool calling, 23+ LLM providers |
 | better-sqlite3 + sqlite-vec | Database + vector search for memory |
 | fastembed | Local ONNX embeddings (bge-small-en-v1.5, 384 dims, English-optimized) |
-| franc-min | Trigram-based language detection (30+ languages, used for TTS voice selection) |
 | @discordjs/opus / opusscript | Opus codec (native with WASM fallback) |
 | avr-vad | Silero VAD v5 via ONNX |
 | groq-sdk | Groq Whisper ASR |
@@ -92,7 +91,7 @@ docker compose build && docker compose up -d
 ## Firmware (ESP32)
 
 ### Supported Boards
-The firmware auto-detects the board variant at boot by probing I2C for the ES8311 codec.
+The board variant is selected at compile time via `CONFIG_BOARD_TYPE` (set in sdkconfig) — there is no runtime auto-detection, so each board needs its own firmware binary.
 
 **Spotpear** (`espie-spotpear`) — full-featured
 - **AliExpress listing**: "ESP32-S3 DeepSeek AI Chat Box 1.54 inch LCD N16R8"
@@ -199,7 +198,7 @@ cd firmware/
 - **UI style**: Chat bubbles (green=user, gray=assistant) via `CONFIG_USE_WECHAT_MESSAGE_STYLE=y`
 - **Custom patch**: `lcd_display.cc` `SetEmotion()` — emoji hidden whenever chat messages exist
 - **Touch**: CST816D (I2C addr 0x15). Short tap toggles chat state, long press ignored.
-- **Untapped**: CST816D gesture register (`0x01`) supports swipe gestures — not yet used.
+- **Swipe gestures**: CST816D gesture register (`0x01`) is read to navigate between screens (clock, chat, now playing, settings).
 
 ## Secrets & Configuration
 - **`espie/.env`** — GROQ_API_KEY, HA_BASE_URL, HA_TOKEN, etc. Gitignored.
@@ -228,10 +227,10 @@ The VAD provider (`server/providers/vad.ts`) runs Silero VAD v5 ONNX model direc
 LVGL fonts only contain specific Unicode ranges. If you `lv_label_set_text` with a codepoint the label's font doesn't include (e.g. FontAwesome icon bytes with a text font), LVGL will look up an invalid glyph descriptor and crash — there is no fallback font mechanism. Always set the label's font to match the codepoints you're rendering. Use `icon_font` or `large_icon_font` from the theme for FontAwesome glyphs, and the text font for regular characters. You cannot mix both in a single label.
 
 ## Language
-- **Multilingual voice** — speak any language and Espie responds in it. ASR (Groq Whisper) transcribes natively, the LLM mirrors the user's language, and TTS auto-switches to a native Edge TTS voice via `franc-min` language detection (30+ languages with gender-matched voices). Language is detected once from the user's speech and locked for the entire response to prevent mid-sentence voice switching.
+- **Multilingual voice** — speak any language and Espie responds in it. ASR (Groq Whisper) transcribes natively and reports the spoken language, the LLM mirrors the user's language, and TTS auto-switches to a native Edge TTS voice for that language (30+ languages with gender-matched voices). Language is detected once from the user's speech and locked for the entire response to prevent mid-sentence voice switching.
 - **Embeddings are English-optimized** — bge-small-en-v1.5 works best for English semantic search. Memory recall in other languages may be less accurate.
 - **Firmware UI is English** — device-side strings, prompts, and wake words are English.
-- **TTS auto-language implementation**: `server/utils/language-voice.ts` maps ISO 639-3 codes to Edge TTS voices. The pipeline (`voice-pipeline.ts`) calls `detectLanguage()` on the ASR transcription and sets the TTS voice via `tts.setLanguage()`. The `TTSProvider` interface includes `setLanguage(lang)` — Edge TTS uses it to pick a language-appropriate voice, OpenAI TTS ignores it (already multilingual).
+- **TTS auto-language implementation**: `server/utils/language-voice.ts` maps ISO 639-1 codes to Edge TTS voices. Whisper returns the spoken language with each transcription (`asr.ts` normalizes it to an ISO 639-1 code); the pipeline (`voice-pipeline.ts`) sets the TTS voice via `tts.setLanguage()`. The `TTSProvider` interface includes `setLanguage(lang)` — Edge TTS uses it to pick a language-appropriate voice, OpenAI TTS ignores it (already multilingual).
 - Upstream firmware code/comments are mostly Chinese — translate when explaining
 
 ## Custom Firmware Patches (not upstream)
