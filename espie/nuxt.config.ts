@@ -4,6 +4,15 @@ export default defineNuxtConfig({
   future: { compatibilityVersion: 4 },
   modules: ['@nuxt/ui', '@nuxtjs/mdc'],
 
+  // Per-page document titles. The dashboard layout sets the page title via
+  // useHead (derived from the route); this template suffixes the app name.
+  app: {
+    head: {
+      titleTemplate: '%s · Espie',
+      title: 'Espie',
+    },
+  },
+
   // Prevent ECONNRESET from crashing the dev server.
   //
   // Two layers of defense, both in the PARENT Nuxt CLI process

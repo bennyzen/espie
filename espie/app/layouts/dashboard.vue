@@ -17,6 +17,10 @@ const pageTitle = computed(() => {
   if (segments.length === 0) return 'Chat'
   return segments.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' / ')
 })
+
+// Set the document <title> per route (suffixed with the app name via the
+// titleTemplate in nuxt.config). Every page renders through this layout.
+useHead({ title: () => pageTitle.value })
 </script>
 
 <template>
