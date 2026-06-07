@@ -38,7 +38,7 @@ useHead({ title: () => pageTitle.value })
       </template>
     </UDashboardSidebar>
 
-    <UDashboardPanel :ui="{ body: 'p-0! gap-0! flex flex-col flex-1 overflow-hidden' }">
+    <UDashboardPanel :ui="{ body: 'p-0! gap-0! flex flex-col flex-1 min-h-0 overflow-y-auto' }">
       <template #header>
         <UDashboardNavbar :title="pageTitle" />
       </template>
