@@ -40,6 +40,15 @@ protected:
     virtual bool Lock(int timeout_ms = 0) override;
     virtual void Unlock() override;
 
+    // True when this display's LVGL tree is not on the active screen. On boards
+    // with a ScreenManager (e.g. Spotpear) the WeChat tree built in SetupUI() is
+    // orphaned off-screen by lv_screen_load(); only CreateGlobalTopBar()'s
+    // layer_top widgets stay visible. Mutating or (especially) deleting objects
+    // on the orphaned tree corrupts LVGL's global event-dispatch state and
+    // double-frees in the render task during the active screen's next layout
+    // pass (issue #27). Must be called with the display lock held.
+    bool IsOrphaned();
+
 protected:
     // Add protected constructor
     LcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handle_t panel, int width, int height);

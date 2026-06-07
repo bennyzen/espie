@@ -351,6 +351,13 @@ void LcdDisplay::Unlock() {
     lvgl_port_unlock();
 }
 
+bool LcdDisplay::IsOrphaned() {
+    // container_ is the root of the WeChat UI tree. If it no longer belongs to
+    // the active screen, this display's tree is orphaned (a ScreenManager owns
+    // the visible screens) and must not be mutated/deleted — see header note (#27).
+    return container_ != nullptr && lv_obj_get_screen(container_) != lv_screen_active();
+}
+
 #if CONFIG_USE_WECHAT_MESSAGE_STYLE
 void LcdDisplay::SetupUI() {
     // Prevent duplicate calls - if already called, return early
@@ -520,7 +527,10 @@ void LcdDisplay::SetChatMessage(const char* role, const char* content) {
         }
         return;
     }
-    
+    if (IsOrphaned()) {
+        return;  // tree is off-screen (ScreenManager board); mutating/deleting it crashes the render task (#27)
+    }
+
     // Check if message count exceeds limit
     uint32_t child_count = lv_obj_get_child_cnt(content_);
     if (child_count >= MAX_MESSAGES) {
@@ -804,7 +814,10 @@ void LcdDisplay::ClearChatMessages() {
     if (content_ == nullptr) {
         return;
     }
-    
+    if (IsOrphaned()) {
+        return;  // tree is off-screen (ScreenManager board); deleting its children crashes the render task (#27)
+    }
+
     // Use lv_obj_clean to delete all children of content_ (chat message bubbles)
     lv_obj_clean(content_);
     
@@ -1098,6 +1111,12 @@ void LcdDisplay::SetEmotion(const char* emotion) {
             ESP_LOGW(TAG, "SetEmotion('%s') failed: emoji_image_ is nullptr (SetupUI() was called but emoji image not created)", emotion);
         }
         return;
+    }
+    {
+        DisplayLockGuard lock(this);
+        if (IsOrphaned()) {
+            return;  // tree is off-screen (ScreenManager board); mutating it crashes the render task (#27)
+        }
     }
 
     auto emoji_collection = static_cast<LvglTheme*>(current_theme_)->emoji_collection();
