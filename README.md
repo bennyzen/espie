@@ -14,6 +14,29 @@ A self-hosted, privacy-first voice assistant for the dozens of cheap ESP32-based
 
 The firmware side is heavily patched too. The stock device shows a static emoji face and not much else. Espie adds chat bubbles, swipe gestures to navigate between screens (chat, now playing, weather, clock), Home Assistant smart home control, YouTube Music playback, local weather display, and scheduled proactive conversations. The whole thing is designed to be easy to extend with your own ideas — add a new screen, a new tool, a new voice trigger.
 
+## Contents
+
+- [What It Does](#what-it-does)
+- [Architecture](#architecture)
+- [Service Stack](#service-stack)
+- [Compatible Hardware](#compatible-hardware)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [1. Run the Server](#1-run-the-server)
+  - [2. Configure](#2-configure)
+  - [3. Provision the Device](#3-provision-the-device)
+- [Firmware Development](#firmware-development)
+- [Web Dashboard](#web-dashboard)
+- [Voice Pipeline](#voice-pipeline)
+- [Proactive Conversations](#proactive-conversations)
+- [Memory](#memory)
+- [Home Assistant Integration](#home-assistant-integration)
+- [Music / Jukebox](#music--jukebox)
+- [Project Structure](#project-structure)
+- [Multilingual Support](#multilingual-support)
+- [Constraints](#constraints)
+- [Credits](#credits)
+
 ## What It Does
 
 Talk to an ESP32 device on your desk. It listens, transcribes your speech, sends it to any LLM (Anthropic, OpenAI, Google, Groq, and 20+ more), speaks the response back, and displays chat bubbles on a small LCD. It remembers things you tell it, controls your smart home, plays music from YouTube Music, shows your local weather, and can proactively talk to you on a schedule -- a morning briefing, a reminder, a check-in before bed. Swipe the touchscreen to flip between screens.
@@ -44,7 +67,7 @@ The ESP32 device connects to the Espie server over a single WebSocket. It stream
 
 The upstream XiaoZhi firmware supports **70+ boards** across ESP32-S3, ESP32-C3, ESP32-C6, and ESP32-P4 chips. In practice, any ESP32-based device sold as a "XiaoZhi" or "DeepSeek AI Chat Box" should work -- just select the right board config at build time. These devices are widely available for around $15-25 from AliExpress, Banggood, Amazon, and Taobao, from manufacturers like Spotpear, Waveshare, LiChuang, LILYGO, M5Stack, and many others.
 
-The server runs on anything with Node.js 20+ -- a Raspberry Pi, a NUC, a laptop, a VM.
+The server runs anywhere Docker does -- a Raspberry Pi, a NUC, a laptop, a VM (Linux/macOS/Windows, ARM or x86).
 
 **Currently tested with:**
 
@@ -59,68 +82,62 @@ If you've tested another board, open an issue or PR to add it here.
 
 ### Prerequisites
 
-- Node.js 20+
-- Docker (optional, for containerized deployment)
+- Docker + Docker Compose
 - A Groq API key (free at [console.groq.com](https://console.groq.com))
 - An LLM API key (Anthropic, OpenAI, Google, etc.)
 
-### 1. Configure
+### 1. Run the Server
 
 ```bash
 cd espie/
-cp .env.example .env
-# Edit .env with your API keys:
-#   GROQ_API_KEY=gsk_...
-#   ANTHROPIC_API_KEY=sk-ant-...  (or any other LLM provider)
+docker compose up -d        # builds the image on first run, serves on :8000
 ```
 
-### 2. Run the Server
+The dashboard is now at **http://localhost:8000**.
 
-```bash
-npm install
-NUXT_PORT=8000 npx nuxt dev --host 0.0.0.0
-```
+> **Developing Espie itself?** Use the hot-reload dev container instead — it bind-mounts the source and restarts on save:
+> ```bash
+> docker compose -f docker-compose.dev.yml up -d
+> ```
 
-Or with Docker:
+### 2. Configure
 
-```bash
-docker compose build && docker compose up -d
-```
+Set everything up in the dashboard — there are no config files to edit:
 
-### 3. Flash the ESP32
+- **Config** — pick your LLM provider and model, paste API keys (or sign in via OAuth for Anthropic, GitHub Copilot, Gemini, OpenAI), set the Groq Whisper ASR key, choose a TTS voice, and write the assistant's personality.
+- **Config → Home Assistant** *(optional)* — add your HA URL and access token for smart-home control.
 
-**Option A: Browser flash wizard (no toolchain needed)**
+Keys and settings are stored server-side under `data/` — you never touch a file by hand.
 
-The Devices page has a built-in flash wizard that provisions your ESP32 directly from the browser. Pre-built firmware is included — no ESP-IDF installation required.
+### 3. Provision the Device
 
-1. Open `http://localhost:8000/devices` in Chrome
-2. Plug in your ESP32 via USB
-3. Click **Connect Device** and select the serial port
-4. Enter your WiFi credentials and click **Flash Firmware**
-5. Device reboots, connects to WiFi, and appears in the dashboard
+Flash and provision your ESP32 entirely from the dashboard — no toolchain, no rebuild. Pre-built firmware ships with the server.
 
-> Requires a Chromium browser (Chrome, Edge, Brave) and HTTPS or localhost. Firefox/Safari are not supported (no Web Serial API).
+1. Open **http://localhost:8000/devices** in a Chromium browser (Chrome, Edge, or Brave) **on the machine you'll plug the device into**. Web Serial only works over `localhost` or HTTPS — not a plain-HTTP LAN address.
+2. Plug in the ESP32 via USB and power it on.
+3. Click **Connect Device** and pick the serial port (the picker filters for Espressif chips). The board is auto-detected.
+4. Check the **WiFi network**, **password**, and **server URL** — they're pre-filled from your server config. The server URL is how the device reaches Espie after it reboots, so it must be the server's address **on your LAN** (e.g. `http://192.168.1.50:8000`), not `localhost`. Edit it if the proposed value isn't reachable from the device.
+5. Click **Flash**. The wizard writes the firmware plus a small NVS partition holding your WiFi credentials and the server URL.
+6. The device reboots, joins WiFi, checks in with the server, and appears in the **Devices** list. Start talking to it.
 
-**Option B: Build from source**
+> Chromium browsers only — Firefox and Safari have no Web Serial API.
 
-Requires [ESP-IDF v5.5.2+](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/get-started/).
+<details>
+<summary><b>Advanced: build &amp; flash from source (ESP-IDF)</b></summary>
+
+For firmware development. Requires [ESP-IDF v5.5.2+](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/get-started/).
 
 ```bash
 cd firmware/
-
-# Update sdkconfig with your server IP:
-#   CONFIG_OTA_URL="http://YOUR_SERVER_IP:8000/xiaozhi/ota/"
-
 ./build.sh          # Build firmware
-./flash.sh          # Build + flash (auto-detects serial port on macOS & Linux)
+./flash.sh          # Build + flash over USB (auto-detects the serial port)
 ./monitor.sh        # Serial monitor (Ctrl+] to exit)
 ```
 
-The scripts auto-detect your serial port and source ESP-IDF from `~/esp-idf` (override with `IDF_PATH`). See `./flash.sh --help` for options like `--no-build` or passing a specific port.
+The scripts source ESP-IDF from `~/esp-idf` (override with `IDF_PATH`). The browser wizard's NVS provisioning sets the OTA/server URL at flash time, so you don't need to bake `CONFIG_OTA_URL` into `sdkconfig` for the wizard path. After the first USB flash, iterate wirelessly with `./dev-ota.sh` (see [Firmware Development](#firmware-development)).
+</details>
 
-The firmware OTA URL is baked in at compile time. If your server IP changes, you need to rebuild and reflash.
-
-### 4. Iterate (OTA Dev Workflow)
+## Firmware Development
 
 After the first USB flash, you never need to plug in again. The `dev-ota.sh` script builds the firmware, copies the binary to the server's OTA directory, and reboots the device over WiFi:
 
@@ -239,7 +256,7 @@ The embedding model (bge-small-en-v1.5) is English-optimized, so memory recall w
 
 ## Constraints
 
-- **OTA URL is compile-time** -- firmware must be rebuilt if the server IP changes
+- **Server URL lives on the device** -- if the server's IP changes, re-run the flash wizard to re-provision it (no rebuild needed). Firmware built from source without the wizard bakes the URL in at compile time.
 - **Memory is English-optimized** -- semantic search uses an English embedding model; recall in other languages may be less accurate
 
 ## Credits
