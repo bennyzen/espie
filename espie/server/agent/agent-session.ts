@@ -4,8 +4,8 @@
  * No knowledge of voice, network, or device transport -- consumers map
  * AgentEvents to their own transport-specific actions.
  */
-import { Agent } from '@mariozechner/pi-agent-core'
-import { streamSimple } from '@mariozechner/pi-ai'
+import { Agent } from '@earendil-works/pi-agent-core'
+import { streamSimple } from '@earendil-works/pi-ai'
 import type { AgentEvent, AgentEventHandler, AgentSessionOptions } from './types'
 
 export class AgentSession {

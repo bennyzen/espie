@@ -8,7 +8,7 @@ import { promisify } from 'node:util'
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import * as path from 'node:path'
 import { Type } from '@sinclair/typebox'
-import type { AgentTool } from '@mariozechner/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 
 const execFileAsync = promisify(execFile)
 

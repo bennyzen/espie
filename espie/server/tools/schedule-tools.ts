@@ -3,7 +3,7 @@
 
 import { Type } from '@sinclair/typebox'
 import nodeCron from 'node-cron'
-import type { AgentTool } from '@mariozechner/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type Database from 'better-sqlite3'
 import {
   listSchedules,

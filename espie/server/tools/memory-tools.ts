@@ -5,7 +5,7 @@
  * can see existing memories and use replace_id to update contradicting ones.
  */
 import { Type } from '@sinclair/typebox'
-import type { AgentTool } from '@mariozechner/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type { MemoryService } from '../utils/memory'
 
 export function createSaveMemoryTool(memoryService: MemoryService): AgentTool<any> {

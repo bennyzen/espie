@@ -1,7 +1,7 @@
 // Weather tool — lets the agent check current weather and forecast.
 
 import { Type } from '@sinclair/typebox'
-import type { AgentTool } from '@mariozechner/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 import { getWeather } from '../utils/weather'
 
 export function createWeatherTool(): AgentTool<any> {

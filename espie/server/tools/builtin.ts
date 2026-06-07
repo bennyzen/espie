@@ -5,7 +5,7 @@
  */
 import { createHomeAssistantTools } from './home-assistant'
 import { loadConfig } from '../utils/config'
-import type { AgentTool } from '@mariozechner/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 
 export interface BuiltinToolsResult {
   tools: AgentTool<any>[]

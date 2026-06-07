@@ -8,7 +8,7 @@ import * as path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { watch, type FSWatcher } from 'chokidar'
 import { Type } from '@sinclair/typebox'
-import type { AgentTool } from '@mariozechner/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 
 /**
  * Plugin loader that discovers tools from the filesystem and npm packages.

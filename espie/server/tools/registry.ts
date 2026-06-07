@@ -3,7 +3,7 @@
  * Creates the right tool set for voice, web chat, and scheduler sessions.
  * Single source of truth: add a new tool here, every session type gets it.
  */
-import type { AgentTool } from '@mariozechner/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type Database from 'better-sqlite3'
 import type { EmbeddingProvider } from '../providers/embeddings'
 import type { DeviceTransport } from '../utils/device-registry'

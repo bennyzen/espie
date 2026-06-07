@@ -3,7 +3,7 @@
 // Additionally speaks it aloud if a device is idle and connected.
 
 import { Type } from '@sinclair/typebox'
-import type { AgentTool } from '@mariozechner/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type { DeviceTransport } from '../utils/device-registry'
 import { deviceRegistry } from '../utils/device-registry'
 import { createTTS } from '../providers/registry'

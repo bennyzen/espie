@@ -1,11 +1,11 @@
 // GET /api/providers — returns all pi-ai LLM providers, their models, and auth metadata.
 // Used by the config UI to populate dynamic provider/model dropdowns.
 
-import { getProviders, getModels, registerBuiltInApiProviders } from '@mariozechner/pi-ai'
+import { getProviders, getModels, registerBuiltInApiProviders } from '@earendil-works/pi-ai'
 
 // Ensure all 31 providers are registered — can't rely on import side effects from other modules
 registerBuiltInApiProviders()
-import { getOAuthProviders } from '@mariozechner/pi-ai/oauth'
+import { getOAuthProviders } from '@earendil-works/pi-ai/oauth'
 
 // Map provider IDs to their expected env var names (mirrors pi-ai's env-api-keys.ts)
 const envVarMap: Record<string, string> = {

@@ -396,7 +396,7 @@ export function createApiKeyResolver(): (provider: string) => Promise<string | u
       }
       // Token expired — try to refresh
       try {
-        const { getOAuthProvider } = await import('@mariozechner/pi-ai/oauth')
+        const { getOAuthProvider } = await import('@earendil-works/pi-ai/oauth')
         const oauthProvider = getOAuthProvider(provider)
         if (oauthProvider) {
           const refreshed = await oauthProvider.refreshToken(oauthCred)

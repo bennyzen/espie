@@ -12,7 +12,7 @@ const mockSubscribe = vi.fn((cb: any) => {
   return () => {} // unsubscribe function
 })
 
-vi.mock('@mariozechner/pi-agent-core', () => ({
+vi.mock('@earendil-works/pi-agent-core', () => ({
   Agent: vi.fn().mockImplementation(function (this: any) {
     this.prompt = mockPrompt
     this.steer = mockSteer
@@ -21,7 +21,7 @@ vi.mock('@mariozechner/pi-agent-core', () => ({
   }),
 }))
 
-vi.mock('@mariozechner/pi-ai', () => ({
+vi.mock('@earendil-works/pi-ai', () => ({
   streamSimple: vi.fn(),
 }))
 

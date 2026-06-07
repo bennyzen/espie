@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import type { EspiePlugin } from '../../server/utils/plugin-types'
-import type { AgentTool } from '@mariozechner/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 import { Type } from '@sinclair/typebox'
 
 // --- Config Loader Tests ---
@@ -85,7 +85,7 @@ describe('Provider Registry', () => {
   describe('createLLM', () => {
     it('returns anthropic model by default (no config)', async () => {
       const mockModel = { id: 'anthropic-default' }
-      vi.doMock('@mariozechner/pi-ai', () => ({
+      vi.doMock('@earendil-works/pi-ai', () => ({
         registerBuiltInApiProviders: vi.fn(),
         getModel: vi.fn().mockReturnValue(mockModel),
       }))
@@ -98,7 +98,7 @@ describe('Provider Registry', () => {
 
     it('returns openai model when configured', async () => {
       const mockModel = { id: 'openai-gpt4o' }
-      vi.doMock('@mariozechner/pi-ai', () => ({
+      vi.doMock('@earendil-works/pi-ai', () => ({
         registerBuiltInApiProviders: vi.fn(),
         getModel: vi.fn().mockReturnValue(mockModel),
       }))
@@ -110,7 +110,7 @@ describe('Provider Registry', () => {
     })
 
     it('throws on unknown provider', async () => {
-      vi.doMock('@mariozechner/pi-ai', () => ({
+      vi.doMock('@earendil-works/pi-ai', () => ({
         registerBuiltInApiProviders: vi.fn(),
         getModel: vi.fn(),
       }))
@@ -137,7 +137,7 @@ describe('Provider Registry', () => {
           audio = { transcriptions: { create: vi.fn().mockResolvedValue({ text: 'test' }) } }
         },
       }))
-      vi.doMock('@mariozechner/pi-ai', () => ({
+      vi.doMock('@earendil-works/pi-ai', () => ({
         registerBuiltInApiProviders: vi.fn(),
         getModel: vi.fn(),
       }))
@@ -160,7 +160,7 @@ describe('Provider Registry', () => {
           audio = { transcriptions: { create: vi.fn() } }
         },
       }))
-      vi.doMock('@mariozechner/pi-ai', () => ({
+      vi.doMock('@earendil-works/pi-ai', () => ({
         registerBuiltInApiProviders: vi.fn(),
         getModel: vi.fn(),
       }))
@@ -176,7 +176,7 @@ describe('Provider Registry', () => {
       vi.doMock('groq-sdk', () => ({
         default: class MockGroq {},
       }))
-      vi.doMock('@mariozechner/pi-ai', () => ({
+      vi.doMock('@earendil-works/pi-ai', () => ({
         registerBuiltInApiProviders: vi.fn(),
         getModel: vi.fn(),
       }))
@@ -196,7 +196,7 @@ describe('Provider Registry', () => {
     })
 
     it('returns Edge TTS provider by default', async () => {
-      vi.doMock('@mariozechner/pi-ai', () => ({
+      vi.doMock('@earendil-works/pi-ai', () => ({
         registerBuiltInApiProviders: vi.fn(),
         getModel: vi.fn(),
       }))
@@ -215,7 +215,7 @@ describe('Provider Registry', () => {
           audio = { speech: { create: vi.fn().mockResolvedValue({ arrayBuffer: () => mockArrayBuffer }) } }
         },
       }))
-      vi.doMock('@mariozechner/pi-ai', () => ({
+      vi.doMock('@earendil-works/pi-ai', () => ({
         registerBuiltInApiProviders: vi.fn(),
         getModel: vi.fn(),
       }))
@@ -228,7 +228,7 @@ describe('Provider Registry', () => {
     })
 
     it('throws on unknown TTS provider', async () => {
-      vi.doMock('@mariozechner/pi-ai', () => ({
+      vi.doMock('@earendil-works/pi-ai', () => ({
         registerBuiltInApiProviders: vi.fn(),
         getModel: vi.fn(),
       }))

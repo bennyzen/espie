@@ -1,7 +1,7 @@
 // LLM Provider — pi-ai model configuration.
 // Configures LLM models via pi-ai's unified provider interface.
 
-import { registerBuiltInApiProviders, getModel } from '@mariozechner/pi-ai'
+import { registerBuiltInApiProviders, getModel } from '@earendil-works/pi-ai'
 
 // Register built-in providers on module load so models are available
 registerBuiltInApiProviders()

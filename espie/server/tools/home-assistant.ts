@@ -4,7 +4,7 @@
  * Requires HA_BASE_URL and HA_TOKEN environment variables.
  */
 import { Type } from '@sinclair/typebox'
-import type { AgentTool } from '@mariozechner/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 
 interface HAToolsConfig {
   baseUrl: string

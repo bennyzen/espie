@@ -3,8 +3,8 @@
 // The pi-ai OAuth provider handles the callback server internally.
 // Poll GET /api/oauth/:provider/status?flowId=xxx to check completion.
 
-import { getOAuthProvider } from '@mariozechner/pi-ai/oauth'
-import type { OAuthCredentials } from '@mariozechner/pi-ai/oauth'
+import { getOAuthProvider } from '@earendil-works/pi-ai/oauth'
+import type { OAuthCredentials } from '@earendil-works/pi-ai/oauth'
 import { saveConfig } from '../../../utils/config'
 
 // In-memory store for pending OAuth flows

@@ -255,7 +255,7 @@ describe('createLLMModel', () => {
 
   it('calls getModel with anthropic as provider', async () => {
     const mockGetModel = vi.fn().mockReturnValue({ id: 'test' })
-    vi.doMock('@mariozechner/pi-ai', () => ({
+    vi.doMock('@earendil-works/pi-ai', () => ({
       registerBuiltInApiProviders: vi.fn(),
       getModel: mockGetModel,
     }))
@@ -270,7 +270,7 @@ describe('createLLMModel', () => {
     delete process.env.LLM_MODEL
 
     const mockGetModel = vi.fn().mockReturnValue({ id: 'test' })
-    vi.doMock('@mariozechner/pi-ai', () => ({
+    vi.doMock('@earendil-works/pi-ai', () => ({
       registerBuiltInApiProviders: vi.fn(),
       getModel: mockGetModel,
     }))
@@ -285,7 +285,7 @@ describe('createLLMModel', () => {
     process.env.LLM_MODEL = 'claude-opus-4-20250514'
 
     const mockGetModel = vi.fn().mockReturnValue({ id: 'test' })
-    vi.doMock('@mariozechner/pi-ai', () => ({
+    vi.doMock('@earendil-works/pi-ai', () => ({
       registerBuiltInApiProviders: vi.fn(),
       getModel: mockGetModel,
     }))

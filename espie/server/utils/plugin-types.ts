@@ -2,7 +2,7 @@
 // Drop-in .ts plugin files and npm plugin packages export this interface.
 
 import type { TSchema, Static } from '@sinclair/typebox'
-import type { AgentToolResult, AgentToolUpdateCallback } from '@mariozechner/pi-agent-core'
+import type { AgentToolResult, AgentToolUpdateCallback } from '@earendil-works/pi-agent-core'
 
 /**
  * EspiePlugin interface — the contract for all voice assistant plugins.

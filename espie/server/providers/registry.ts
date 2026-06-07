@@ -2,7 +2,7 @@
 // Each factory accepts an optional config object to select the provider and returns
 // the appropriate provider instance. Defaults match the existing stack.
 
-import { getModel, getModels, registerBuiltInApiProviders } from '@mariozechner/pi-ai'
+import { getModel, getModels, registerBuiltInApiProviders } from '@earendil-works/pi-ai'
 import { createGroqASR, createOpenAIASR, type ASRProvider } from './asr'
 import { createEdgeTTS, createOpenAITTS, type TTSProvider } from './tts'
 import type { EmbeddingProvider } from './embeddings'
