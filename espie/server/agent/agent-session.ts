@@ -91,7 +91,9 @@ export class AgentSession {
    */
   setTools(tools: unknown[]): void {
     if (this.agent) {
-      this.agent.setTools(tools as any[])
+      // pi-agent-core 0.78 removed Agent.setTools(); tools are now updated
+      // via the settable state accessor (assigning copies the top-level array).
+      this.agent.state.tools = tools as any[]
     }
   }
 
