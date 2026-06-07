@@ -145,6 +145,7 @@ Open `http://your-server:8000` for the management dashboard:
 - **Chat** -- Text chat with the assistant (same brain as voice)
 - **Sessions** -- View conversation history from the device
 - **Memory** -- Browse and manage stored facts
+- **Music** -- Browse the downloaded library, play/scrub/download/delete tracks
 - **Devices** -- Connected ESP32 devices + **browser flash wizard**
 - **Tasks** -- Scheduled proactive tasks (briefings, reminders)
 - **Config** -- LLM provider, ASR model, TTS voice, API keys, personality prompt
@@ -202,6 +203,17 @@ Seven built-in tools for smart home control via the HA REST API:
 `ha_get_state` `ha_list_entities` `ha_call_service` `ha_turn_on` `ha_turn_off` `ha_toggle` `ha_trigger_automation`
 
 Configure your Home Assistant URL and long-lived access token from the dashboard (**Config > Home Assistant**). The page includes a connection test that shows your instance name, version, and entity count. Environment variables (`HA_BASE_URL`, `HA_TOKEN` in `.env`) also work as a fallback.
+
+## Music / Jukebox
+
+A built-in jukebox plays music from YouTube Music -- by voice or from the dashboard. The agent searches with `yt-dlp`, downloads the audio as MP3, caches it, and plays it back.
+
+- **Voice/chat tools**: `play_music` (*"play Bohemian Rhapsody"* -- searches YouTube Music, downloads, and plays) and `list_music` (browse the downloaded library)
+- **Library**: tracks are cached as MP3 under `data/ytmusic/` (override with `YTMUSIC_DIR`) and reused on repeat requests -- no re-download
+- **Music page** (dashboard): browse the library, play/pause, scrub the progress bar, download, and delete tracks
+- **Playback**: songs play on the connected ESP32, and the dashboard Chat returns a playable URL so the same track plays in your browser
+
+Downloads use `yt-dlp` and `ffmpeg`, both bundled in the Docker images -- nothing to install.
 
 ## Project Structure
 
