@@ -8,6 +8,10 @@ import { Agent } from '@earendil-works/pi-agent-core'
 import { streamSimple } from '@earendil-works/pi-ai'
 import type { AgentEvent, AgentEventHandler, AgentSessionOptions } from './types'
 
+// Tool inputs and outputs can carry secrets/PII (memory contents, HA tokens,
+// search queries, location). Off by default; opt in for debugging.
+const LOG_TOOL_IO = process.env.ESPIE_LOG_TOOL_IO === '1' || process.env.ESPIE_LOG_TOOL_IO === 'true'
+
 export class AgentSession {
   private agent: Agent | null
   private handlers: Set<AgentEventHandler>
@@ -15,6 +19,7 @@ export class AgentSession {
   private isProcessing: boolean
   private toolStartTimes: Map<string, number> = new Map()
   private label: string
+  private sawToolCall = false
 
   constructor(options: AgentSessionOptions) {
     this.handlers = new Set()
@@ -52,17 +57,47 @@ export class AgentSession {
    */
   async prompt(text: string): Promise<string> {
     this.isProcessing = true
-    this.fullResponseText = ''
-
+    // The configured LLM provider can return an empty assistant turn (no text, no
+    // tool calls, ~400ms) on the first request after the HTTP connection has gone
+    // idle — observed with zai/GLM. That makes the first message of a session, or
+    // the first after a pause, get no answer. Retry on a genuinely empty turn; the
+    // connection is warm by the next attempt. Gated on "no tool call" so tools are
+    // never re-executed. text_done/turn_end are emitted here (once, after the final
+    // attempt) so discarded empty attempts don't surface as blank assistant turns. (#30)
+    const MAX_ATTEMPTS = 5
     try {
-      await this.agent!.prompt(text)
+      let attempt = 0
+      while (true) {
+        attempt++
+        this.fullResponseText = ''
+        this.sawToolCall = false
+        try {
+          await this.agent!.prompt(text)
+        } catch (error) {
+          this.emit({
+            type: 'error',
+            error: error instanceof Error ? error : new Error(String(error)),
+          })
+          throw error
+        }
+        const empty = !this.fullResponseText.trim() && !this.sawToolCall
+        if (!empty || attempt >= MAX_ATTEMPTS) break
+        // Drop the empty assistant turn (and the user message that produced it) before
+        // retrying: GLM keeps returning empty if re-asked on top of an empty turn, but
+        // answers a clean request. The retry re-appends the same user message.
+        const msgs = (this.agent as any).state?.messages
+        if (Array.isArray(msgs) && msgs.length >= 2 &&
+            msgs[msgs.length - 1]?.role === 'assistant' && msgs[msgs.length - 2]?.role === 'user') {
+          msgs.splice(-2, 2)
+        }
+        console.warn(`[${this.label}] empty response (attempt ${attempt}/${MAX_ATTEMPTS}) — likely a cold provider connection; retrying clean`)
+        // Brief backoff: a fully cold connection needs a moment to establish; hammering
+        // it back-to-back keeps returning empty.
+        await new Promise((r) => setTimeout(r, 300 * attempt))
+      }
+      this.emit({ type: 'text_done', fullText: this.fullResponseText })
+      this.emit({ type: 'turn_end' })
       return this.fullResponseText
-    } catch (error) {
-      this.emit({
-        type: 'error',
-        error: error instanceof Error ? error : new Error(String(error)),
-      })
-      throw error
     } finally {
       this.isProcessing = false
     }
@@ -130,12 +165,18 @@ export class AgentSession {
       case 'tool_execution_start': {
         const toolName = event.toolName || 'unknown'
         const toolInput = event.args
+        this.sawToolCall = true
         this.toolStartTimes.set(toolName, Date.now())
 
-        // Log tool call with full input params
-        const inputStr = toolInput ? JSON.stringify(toolInput) : '{}'
-        const truncated = inputStr.length > 500 ? inputStr.slice(0, 500) + '...' : inputStr
-        console.log(`[${this.label}] ⚙ ${toolName}(${truncated})`)
+        // Tool inputs can contain secrets/PII (memory contents, HA tokens, search
+        // queries), so log the params verbatim only when ESPIE_LOG_TOOL_IO is set.
+        if (LOG_TOOL_IO) {
+          const inputStr = toolInput ? JSON.stringify(toolInput) : '{}'
+          const truncated = inputStr.length > 500 ? inputStr.slice(0, 500) + '...' : inputStr
+          console.log(`[${this.label}] ⚙ ${toolName}(${truncated})`)
+        } else {
+          console.log(`[${this.label}] ⚙ ${toolName}`)
+        }
 
         this.emit({ type: 'tool_start', toolName, toolInput })
         break
@@ -148,18 +189,23 @@ export class AgentSession {
         const duration = startTime ? Date.now() - startTime : 0
         this.toolStartTimes.delete(toolName)
 
-        // Log tool result with duration
-        const outputText = toolOutput?.content?.[0]?.text || ''
-        const outputTruncated = outputText.length > 300 ? outputText.slice(0, 300) + '...' : outputText
-        console.log(`[${this.label}] ✓ ${toolName} → ${outputTruncated} (${duration}ms)`)
+        // Tool results can contain secrets/PII, so log the content verbatim only
+        // when ESPIE_LOG_TOOL_IO is set; otherwise just the name and duration.
+        if (LOG_TOOL_IO) {
+          const outputText = toolOutput?.content?.[0]?.text || ''
+          const outputTruncated = outputText.length > 300 ? outputText.slice(0, 300) + '...' : outputText
+          console.log(`[${this.label}] ✓ ${toolName} → ${outputTruncated} (${duration}ms)`)
+        } else {
+          console.log(`[${this.label}] ✓ ${toolName} (${duration}ms)`)
+        }
 
         this.emit({ type: 'tool_end', toolName, toolOutput })
         break
       }
 
       case 'agent_end':
-        this.emit({ type: 'text_done', fullText: this.fullResponseText })
-        this.emit({ type: 'turn_end' })
+        // text_done / turn_end are emitted from prompt() after the empty-response
+        // retry loop, so discarded empty attempts don't surface as blank turns. (#30)
         break
     }
   }

@@ -80,6 +80,34 @@ describe('saveConfig', () => {
     expect(config.api_keys?.groq).toBe('gsk_full_key_12345678')
   })
 
+  it('does not overwrite a stored API key when saved a masked placeholder', async () => {
+    const { saveConfig, loadConfig, maskApiKey } = await import('../../server/utils/config')
+
+    saveConfig({ api_keys: { groq: 'gsk_full_key_12345678' } })
+    // The /config UI is served masked secrets and round-trips them back on save.
+    saveConfig({ api_keys: { groq: maskApiKey('gsk_full_key_12345678') } })
+
+    expect(loadConfig().api_keys?.groq).toBe('gsk_full_key_12345678')
+  })
+
+  it('still updates an API key when given a real new value', async () => {
+    const { saveConfig, loadConfig } = await import('../../server/utils/config')
+
+    saveConfig({ api_keys: { groq: 'gsk_old_key_12345678' } })
+    saveConfig({ api_keys: { groq: 'gsk_new_key_87654321' } })
+
+    expect(loadConfig().api_keys?.groq).toBe('gsk_new_key_87654321')
+  })
+
+  it('does not overwrite a stored Home Assistant token with a masked placeholder', async () => {
+    const { saveConfig, loadConfig, maskApiKey } = await import('../../server/utils/config')
+
+    saveConfig({ home_assistant: { base_url: 'http://ha.local:8123', token: 'llat_secret_token_value' } })
+    saveConfig({ home_assistant: { base_url: 'http://ha.local:8123', token: maskApiKey('llat_secret_token_value') } })
+
+    expect(loadConfig().home_assistant?.token).toBe('llat_secret_token_value')
+  })
+
   it('loadConfig returns saved values after saveConfig', async () => {
     const { saveConfig, loadConfig } = await import('../../server/utils/config')
 

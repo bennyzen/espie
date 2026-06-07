@@ -218,6 +218,32 @@ export function loadConfig(): EspieConfig {
 }
 
 /**
+ * A value is a masked placeholder if it contains the '***' marker produced by
+ * maskApiKey()/loadConfigMasked(). The /config UI is served masked secrets, so
+ * an unchanged field round-trips a placeholder back on save — never persist it
+ * over the real stored secret.
+ */
+function isMaskedValue(value: unknown): boolean {
+  return typeof value === 'string' && value.includes('***')
+}
+
+/**
+ * Merge an updates record into a base record, dropping any incoming masked
+ * placeholder values so they don't clobber the real stored secrets.
+ */
+function mergeUnmasked(
+  base: Record<string, string> | undefined,
+  updates: Record<string, string>,
+): Record<string, string> {
+  const merged = { ...(base || {}) }
+  for (const [key, value] of Object.entries(updates)) {
+    if (isMaskedValue(value)) continue
+    merged[key] = value
+  }
+  return merged
+}
+
+/**
  * Save configuration updates, merging with existing config.
  * Writes to CONFIG_PATH env var or './data/.config.yaml'.
  */
@@ -243,10 +269,17 @@ export function saveConfig(updates: Partial<EspieConfig>): void {
     current.plugins = { ...current.plugins, ...updates.plugins }
   }
   if (updates.api_keys) {
-    current.api_keys = { ...(current.api_keys || {}), ...updates.api_keys }
+    current.api_keys = mergeUnmasked(current.api_keys, updates.api_keys)
   }
   if (updates.oauth_credentials) {
-    current.oauth_credentials = { ...(current.oauth_credentials || {}), ...updates.oauth_credentials }
+    // Drop masked creds (loadConfigMasked() sets refresh/access to '***') so a
+    // round-tripped masked credential can't overwrite the real tokens.
+    const merged = { ...(current.oauth_credentials || {}) }
+    for (const [provider, cred] of Object.entries(updates.oauth_credentials)) {
+      if (isMaskedValue(cred?.refresh) || isMaskedValue(cred?.access)) continue
+      merged[provider] = cred
+    }
+    current.oauth_credentials = merged
   }
   if (updates.personality) {
     current.personality = { ...(current.personality || {}), ...updates.personality }
@@ -258,7 +291,13 @@ export function saveConfig(updates: Partial<EspieConfig>): void {
     current.location = updates.location || undefined
   }
   if (updates.home_assistant) {
-    current.home_assistant = { ...(current.home_assistant || {}), ...updates.home_assistant }
+    const ha = { ...(current.home_assistant || {}) }
+    if (updates.home_assistant.base_url !== undefined) ha.base_url = updates.home_assistant.base_url
+    // Keep the stored token if the incoming one is a masked placeholder.
+    if (updates.home_assistant.token !== undefined && !isMaskedValue(updates.home_assistant.token)) {
+      ha.token = updates.home_assistant.token
+    }
+    current.home_assistant = ha
   }
   if (updates.wifi) {
     current.wifi = { ...(current.wifi || {}), ...updates.wifi }
