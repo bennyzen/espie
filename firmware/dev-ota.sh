@@ -15,16 +15,19 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+CMAKELISTS="CMakeLists.txt"            # top-level: holds PROJECT_VER
+MAIN_CMAKELISTS="main/CMakeLists.txt"  # holds the per-board BOARD_TYPE mapping
+
 # Derive model from active sdkconfig board selection
 BOARD_CONFIG=$(grep -oP 'CONFIG_BOARD_TYPE_\K\w+(?==y)' sdkconfig | head -1)
 if [[ -z "$BOARD_CONFIG" ]]; then
     echo "ERROR: No board selected in sdkconfig"
     exit 1
 fi
-# Map Kconfig name to BOARD_TYPE string via CMakeLists.txt
-MODEL=$(grep -A1 "CONFIG_BOARD_TYPE_${BOARD_CONFIG})" "$CMAKELISTS" | grep -oP 'BOARD_TYPE "\K[^"]+')
+# Map Kconfig name to BOARD_TYPE string via main/CMakeLists.txt
+MODEL=$(grep -A1 "CONFIG_BOARD_TYPE_${BOARD_CONFIG})" "$MAIN_CMAKELISTS" | grep -oP 'BOARD_TYPE "\K[^"]+')
 if [[ -z "$MODEL" ]]; then
-    echo "ERROR: Could not find BOARD_TYPE for $BOARD_CONFIG in $CMAKELISTS"
+    echo "ERROR: Could not find BOARD_TYPE for $BOARD_CONFIG in $MAIN_CMAKELISTS"
     exit 1
 fi
 BIN_DIR="../espie/data/bin"
@@ -32,7 +35,6 @@ SERVER="${ESPIE_SERVER:-http://localhost:8000}"
 PORT="${DEV_PORT:-/dev/ttyACM0}"
 
 # Read release version and generate dev version with timestamp
-CMAKELISTS="CMakeLists.txt"
 RELEASE_VER=$(grep -oP 'PROJECT_VER "\K[^"]+' "$CMAKELISTS")
 DEV_VER="${RELEASE_VER}.$(date +%Y%m%d%H%M%S)"
 
